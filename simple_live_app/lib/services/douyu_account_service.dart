@@ -9,8 +9,10 @@ class DouyuAccountService extends GetxService implements ICookieAccountService {
   static DouyuAccountService get instance => Get.find<DouyuAccountService>();
 
   var cookie = "";
+  @override
   var hasCookie = false.obs;
 
+  @override
   @override
   void onInit() {
     cookie = LocalStorageService.instance
@@ -25,6 +27,7 @@ class DouyuAccountService extends GetxService implements ICookieAccountService {
     site.cookie = cookie;
   }
 
+  @override
   void setCookie(String cookie) {
     this.cookie = cookie;
     LocalStorageService.instance
@@ -33,6 +36,7 @@ class DouyuAccountService extends GetxService implements ICookieAccountService {
     setSite();
   }
 
+  @override
   void clearCookie() {
     cookie = "";
     LocalStorageService.instance

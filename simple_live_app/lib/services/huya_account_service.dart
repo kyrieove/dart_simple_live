@@ -9,8 +9,10 @@ class HuyaAccountService extends GetxService implements ICookieAccountService {
   static HuyaAccountService get instance => Get.find<HuyaAccountService>();
 
   var cookie = "";
+  @override
   var hasCookie = false.obs;
 
+  @override
   @override
   void onInit() {
     cookie = LocalStorageService.instance
@@ -25,6 +27,7 @@ class HuyaAccountService extends GetxService implements ICookieAccountService {
     site.cookie = cookie;
   }
 
+  @override
   void setCookie(String cookie) {
     this.cookie = cookie;
     LocalStorageService.instance
@@ -33,6 +36,7 @@ class HuyaAccountService extends GetxService implements ICookieAccountService {
     setSite();
   }
 
+  @override
   void clearCookie() {
     cookie = "";
     LocalStorageService.instance
