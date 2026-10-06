@@ -682,8 +682,8 @@ class DouyinSite implements LiveSite {
         "webid": "7382872326016435738",
       },
     );
-    //var requlestUrl = await getAbogusUrl(uri.toString());
-    var requlestUrl = uri.toString();
+    // 必须携带a_bogus签名，否则接口被风控拒绝
+    var requestUrl = DouyinSign.getAbogusUrl(uri.toString(), kDefaultUserAgent);
     var headResp = await HttpClient.instance.head(
       'https://live.douyin.com',
       header: headers,
@@ -699,8 +699,12 @@ class DouyinSite implements LiveSite {
       }
     });
 
+    // 登录用户必须携带完整Cookie，否则返回"请先登录"
+    if (cookie.isNotEmpty) {
+      dyCookie = cookie;
+    }
     var result = await HttpClient.instance.getJson(
-      requlestUrl,
+      requestUrl,
       queryParameters: {},
       header: {
         "Authority": 'www.douyin.com',

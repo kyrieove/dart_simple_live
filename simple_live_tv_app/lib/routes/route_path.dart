@@ -27,6 +27,9 @@ class RoutePath {
   /// 哔哩哔哩登录
   static const kBiliBiliQRLogin = "/bilibili/qr_login";
 
+  /// 抖音登录
+  static const kDouyinWebLogin = "/douyin/web_login";
+
   /// 设置
   static const kSettings = "/settings";
 

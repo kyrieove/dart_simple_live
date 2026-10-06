@@ -5,6 +5,7 @@ import 'package:simple_live_tv_app/app/controller/base_controller.dart';
 import 'package:simple_live_tv_app/app/utils.dart';
 import 'package:simple_live_tv_app/routes/app_navigation.dart';
 import 'package:simple_live_tv_app/services/bilibili_account_service.dart';
+import 'package:simple_live_tv_app/services/douyin_account_service.dart';
 
 class SettingsController extends BaseController
     with GetTickerProviderStateMixin {
@@ -61,6 +62,17 @@ class SettingsController extends BaseController
       }
     } else {
       AppNavigator.toBiliBiliLogin();
+    }
+  }
+  void douyinTap() async {
+    if (DouyinAccountService.instance.hasCookie.value &&
+        DouyinAccountService.instance.cookie.contains("sessionid")) {
+      var result = await Utils.showAlertDialog("确定要退出抖音账号吗？", title: "退出登录");
+      if (result) {
+        DouyinAccountService.instance.clearCookie();
+      }
+    } else {
+      AppNavigator.toDouyinWebLogin();
     }
   }
 

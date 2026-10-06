@@ -34,6 +34,10 @@ class AppNavigator {
     await Get.toNamed(RoutePath.kBiliBiliQRLogin);
   }
 
+  static Future toDouyinWebLogin() async {
+    await Get.toNamed(RoutePath.kDouyinWebLogin);
+  }
+
   /// 跳转至分类详情
   static void toCategoryDetail(
       {required Site site, required LiveSubCategoryExt category}) {

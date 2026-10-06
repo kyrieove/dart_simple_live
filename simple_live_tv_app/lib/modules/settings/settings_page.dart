@@ -8,6 +8,7 @@ import 'package:simple_live_tv_app/app/controller/app_settings_controller.dart';
 import 'package:simple_live_tv_app/app/utils.dart';
 import 'package:simple_live_tv_app/modules/settings/settings_controller.dart';
 import 'package:simple_live_tv_app/services/bilibili_account_service.dart';
+import 'package:simple_live_tv_app/services/douyin_account_service.dart';
 import 'package:simple_live_tv_app/services/follow_user_service.dart';
 import 'package:simple_live_tv_app/widgets/app_scaffold.dart';
 import 'package:simple_live_tv_app/widgets/button/highlight_button.dart';
@@ -461,18 +462,21 @@ class SettingsPage extends GetView<SettingsController> {
           },
         ),
         AppStyle.vGap24,
-        HighlightListTile(
-          focusNode: AppFocusNode(),
-          title: "抖音账号",
-          subtitle: "无需登录",
-          leading: Image.asset(
-            "assets/images/douyin.png",
-            width: 64.w,
-            height: 64.w,
+        Obx(
+          () => HighlightListTile(
+            focusNode: AppFocusNode(),
+            title: "抖音账号",
+            subtitle: DouyinAccountService.instance.hasCookie.value &&
+                    DouyinAccountService.instance.cookie.contains("sessionid")
+                ? "已登录"
+                : "未登录，登录后可搜索抖音主播",
+            leading: Image.asset(
+              "assets/images/douyin.png",
+              width: 64.w,
+              height: 64.w,
+            ),
+            onTap: controller.douyinTap,
           ),
-          onTap: () {
-            SmartDialog.showToast("无需登录抖音，您可以直接观看直播");
-          },
         )
       ],
     );

@@ -3,6 +3,8 @@
 import 'package:get/get.dart';
 import 'package:simple_live_tv_app/modules/account/bilibili/qr_login_controller.dart';
 import 'package:simple_live_tv_app/modules/account/bilibili/qr_login_page.dart';
+import 'package:simple_live_tv_app/modules/account/douyin/web_login_controller.dart';
+import 'package:simple_live_tv_app/modules/account/douyin/web_login_page.dart';
 import 'package:simple_live_tv_app/modules/agreement/agreement_page.dart';
 import 'package:simple_live_tv_app/modules/category/category_controller.dart';
 import 'package:simple_live_tv_app/modules/category/category_page.dart';
@@ -77,6 +79,11 @@ class AppPages {
         BindingsBuilder.put(() => BiliBiliQRLoginController()),
       ],
     ),
+      GetPage(
+        name: RoutePath.kDouyinWebLogin,
+        page: () => const DouyinWebLoginPage(),
+        binding: BindingsBuilder.put(() => DouyinWebLoginController()),
+      ),
     // 设置
     GetPage(
       name: RoutePath.kSettings,
