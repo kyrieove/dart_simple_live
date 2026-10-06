@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:simple_live_core/simple_live_core.dart';
 import 'package:simple_live_core/src/common/convert_helper.dart';
+import 'package:simple_live_core/src/common/core_error.dart';
 import 'package:simple_live_core/src/common/http_client.dart';
 import 'package:simple_live_core/src/scripts/douyin_sign.dart';
 
@@ -62,6 +63,57 @@ class DouyinSite implements LiveSite {
       }
       return headers;
     }
+  }
+
+  /// 获取当前登录用户关注的主播列表（需要登录Cookie，包含sessionid）
+  /// 接口无需签名，cursor分页（此处以page映射offset）
+  /// 注意：仅web_rid非空的用户可导入（抖音平台限制，未开播用户无房间号）
+  Future<LiveSearchAnchorResult> getFollowedAnchors({int page = 1}) async {
+    if (cookie.isEmpty) {
+      throw CoreError("抖音未登录，请先在账号管理中登录");
+    }
+    var result = await HttpClient.instance.getJson(
+      "https://live.douyin.com/webcast/user/follow/list/",
+      queryParameters: {
+        "aid": 6383,
+        "app_name": "douyin_web",
+        "live_id": 1,
+        "device_platform": "web",
+        "language": "zh-CN",
+        "browser_platform": "Win32",
+        "browser_name": "Chrome",
+        "browser_version": "126.0.0.0",
+        "offset": (page - 1) * 50,
+        "count": 50,
+      },
+      header: {
+        "cookie": cookie,
+        "referer": "https://live.douyin.com/follow",
+        "user-agent": kDefaultUserAgent,
+      },
+    );
+    if (result["status_code"] != 0) {
+      throw CoreError(result["data"]?["message"]?.toString() ??
+          "获取关注列表失败(${result["status_code"]})");
+    }
+    var items = <LiveAnchorItem>[];
+    for (var user in result["data"]?["users"] ?? []) {
+      var webRid = user["web_rid"]?.toString() ?? "";
+      if (webRid.isEmpty) {
+        continue;
+      }
+      var avatars = user["avatar_thumb"]?["url_list"];
+      items.add(LiveAnchorItem(
+        roomId: webRid,
+        avatar: (avatars is List && avatars.isNotEmpty)
+            ? avatars.first.toString()
+            : "",
+        userName: user["nickname"]?.toString() ?? "",
+        liveStatus: false,
+      ));
+    }
+    var hasMore = result["data"]?["has_more"] == true;
+    return LiveSearchAnchorResult(hasMore: hasMore, items: items);
   }
 
   @override

@@ -8,8 +8,12 @@ import 'package:simple_live_core/src/model/tars/get_cdn_token_ex_req.dart';
 import 'package:simple_live_core/src/model/tars/get_cdn_token_ex_resp.dart';
 import 'package:simple_live_core/src/model/tars/get_cdn_token_req.dart';
 import 'package:simple_live_core/src/model/tars/get_cdn_token_resp.dart';
+import 'package:simple_live_core/src/model/tars/get_user_subscribe_to_info_list_req.dart';
+import 'package:simple_live_core/src/model/tars/get_user_subscribe_to_info_list_rsp.dart';
 import 'package:simple_live_core/src/model/tars/huya_user_id.dart';
+import 'package:simple_live_core/src/common/core_error.dart';
 import 'package:tars_dart/tars/net/base_tars_http.dart';
+import 'package:tars_dart/tars/tup/tup_result_exception.dart';
 
 class HuyaSite implements LiveSite {
   static const baseUrl = "https://m.huya.com/";
@@ -27,6 +31,12 @@ class HuyaSite implements LiveSite {
 
   final BaseTarsHttp tupClient =
   BaseTarsHttp("http://wup.huya.com", "liveui", headers: requestHeaders);
+
+  /// 用户设置的登录Cookie（web端udb cookie，用于关注列表）
+  String cookie = "";
+
+  /// 关注列表服务端页码基数（0或1），首次请求时自动探测
+  int? _subscribeIndexBase;
 
   String? playUserAgent;
   @override
@@ -306,6 +316,86 @@ class HuyaSite implements LiveSite {
     tReq.sStreamName = stream;
     var resp = await tupClient.tupRequest(func, tReq, GetCdnTokenExResp());
     return resp.sFlvToken;
+  }
+
+  /// 获取当前登录用户关注的主播列表（需要登录Cookie）
+  /// Tars接口: commui.getUserSubscribeToInfoList
+  Future<LiveSearchAnchorResult> getFollowedAnchors({int page = 1}) async {
+    if (cookie.isEmpty) {
+      throw CoreError("虎牙未登录，请先在账号管理中登录");
+    }
+    var rsp = await _sendSubscribeRequest(page, _subscribeIndexBase ?? 0);
+    // 自动探测服务端页码基数：首页为空但总数大于0时改用1基重试
+    if (_subscribeIndexBase == null &&
+        page == 1 &&
+        rsp.vItems.isEmpty &&
+        rsp.iTotal > 0) {
+      rsp = await _sendSubscribeRequest(page, 1);
+      if (rsp.vItems.isNotEmpty) {
+        _subscribeIndexBase = 1;
+      }
+    }
+    var items = <LiveAnchorItem>[];
+    for (var item in rsp.vItems) {
+      if (item.iRoomId <= 0) {
+        continue;
+      }
+      items.add(LiveAnchorItem(
+        roomId: item.iRoomId.toString(),
+        avatar: item.sAvatar,
+        userName: item.sNick,
+        liveStatus: item.iIsLive == 1,
+      ));
+    }
+    var pageSize = rsp.iPageSize > 0 ? rsp.iPageSize : 20;
+    var hasMore = rsp.vItems.isNotEmpty && page * pageSize < rsp.iTotal;
+    return LiveSearchAnchorResult(hasMore: hasMore, items: items);
+  }
+
+  Future<GetUserSubscribeToInfoListRsp> _sendSubscribeRequest(
+      int page, int indexBase) async {
+    var tReq = GetUserSubscribeToInfoListReq()
+      ..tId = _buildUserId()
+      ..iPageIndex = page - 1 + indexBase;
+    var headers = {
+      'referer': 'https://www.huya.com/myfollow',
+      if (cookie.isNotEmpty) 'cookie': cookie,
+    };
+    try {
+      var client = BaseTarsHttp("http://wup.huya.com", "commui",
+          headers: headers);
+      return await client.tupRequest(
+          "getUserSubscribeToInfoList", tReq, GetUserSubscribeToInfoListRsp());
+    } on TupResultException {
+      // 网关已正常响应业务错误（如未登录），无需回退
+      rethrow;
+    } catch (e) {
+      // wup网关不可用时回退到web端使用的cdnws网关
+      var client = BaseTarsHttp("https://cdnws.api.huya.com", "commui",
+          headers: headers);
+      return await client.tupRequest(
+          "getUserSubscribeToInfoList", tReq, GetUserSubscribeToInfoListRsp());
+    }
+  }
+
+  HuyaUserId _buildUserId() {
+    String cookieValue(String key) {
+      for (var part in cookie.split(';')) {
+        var kv = part.trim();
+        if (kv.startsWith('$key=')) {
+          return kv.substring(key.length + 1);
+        }
+      }
+      return "";
+    }
+
+    return HuyaUserId()
+      ..lUid = int.tryParse(cookieValue('udb_uid')) ?? 0
+      ..sGuid = cookieValue('guid')
+      ..sHuYaUA =
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+      ..sCookie = cookie.replaceAll(RegExp(r'\s'), '')
+      ..iTokenType = 0;
   }
 
   @override

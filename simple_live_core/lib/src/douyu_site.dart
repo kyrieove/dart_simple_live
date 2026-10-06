@@ -16,6 +16,8 @@ import 'package:simple_live_core/src/model/live_room_detail.dart';
 import 'package:simple_live_core/src/model/live_play_quality.dart';
 import 'package:simple_live_core/src/model/live_category_result.dart';
 import 'package:html_unescape/html_unescape.dart';
+import 'package:simple_live_core/src/common/convert_helper.dart';
+import 'package:simple_live_core/src/common/core_error.dart';
 import 'package:simple_live_core/src/scripts/douyu_sign.dart';
 
 class DouyuSite implements LiveSite {
@@ -24,6 +26,9 @@ class DouyuSite implements LiveSite {
 
   @override
   String name = "斗鱼直播";
+
+  /// 用户设置的登录Cookie（用于获取关注列表等需要登录态的接口）
+  String cookie = "";
 
   @override
   LiveDanmaku getDanmaku() => DouyuDanmaku();
@@ -358,6 +363,47 @@ class DouyuSite implements LiveSite {
     }
     var hasMore = result["data"]["relateUser"].isNotEmpty;
     return LiveSearchAnchorResult(hasMore: hasMore, items: items);
+  }
+
+  /// 获取当前登录用户关注的主播列表（需要登录Cookie）
+  /// show_status: 1=直播中 2=未开播
+  Future<LiveSearchAnchorResult> getFollowedAnchors({int page = 1}) async {
+    if (cookie.isEmpty) {
+      throw CoreError("斗鱼未登录，请先在账号管理中登录");
+    }
+    var result = await HttpClient.instance.getJson(
+      "https://www.douyu.com/wgapi/livenc/liveweb/follow/list",
+      queryParameters: {
+        "sort": 0,
+        "cid1": 0,
+        "page": page,
+      },
+      header: {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        'referer': 'https://www.douyu.com/directory/myFollow',
+        'x-requested-with': 'XMLHttpRequest',
+        'Cookie': cookie,
+      },
+    );
+    if (result["error"] != 0) {
+      throw CoreError(result["msg"]?.toString() ?? "获取关注列表失败");
+    }
+    var items = <LiveAnchorItem>[];
+    var pageCount = asT<int?>(result["data"]?["pageCount"]) ?? 1;
+    for (var item in result["data"]?["list"] ?? []) {
+      var roomId = item["room_id"]?.toString() ?? "";
+      if (roomId.isEmpty || roomId == "0") {
+        continue;
+      }
+      items.add(LiveAnchorItem(
+        roomId: roomId,
+        avatar: item["avatar_small"]?.toString() ?? "",
+        userName: item["nickname"]?.toString() ?? "",
+        liveStatus: (asT<int?>(item["show_status"]) ?? 0) == 1,
+      ));
+    }
+    return LiveSearchAnchorResult(hasMore: page < pageCount, items: items);
   }
 
   @override

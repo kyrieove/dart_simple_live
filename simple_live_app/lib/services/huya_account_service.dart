@@ -5,9 +5,8 @@ import 'package:simple_live_app/services/cookie_account_service.dart';
 import 'package:simple_live_app/services/local_storage_service.dart';
 import 'package:simple_live_core/simple_live_core.dart';
 
-class DouyinAccountService extends GetxService implements ICookieAccountService {
-  static DouyinAccountService get instance =>
-      Get.find<DouyinAccountService>();
+class HuyaAccountService extends GetxService implements ICookieAccountService {
+  static HuyaAccountService get instance => Get.find<HuyaAccountService>();
 
   var cookie = "";
   var hasCookie = false.obs;
@@ -15,21 +14,21 @@ class DouyinAccountService extends GetxService implements ICookieAccountService 
   @override
   void onInit() {
     cookie = LocalStorageService.instance
-        .getValue(LocalStorageService.kDouyinCookie, "");
+        .getValue(LocalStorageService.kHuyaCookie, "");
     hasCookie.value = cookie.isNotEmpty;
     setSite();
     super.onInit();
   }
 
   void setSite() {
-    var site = (Sites.allSites[Constant.kDouyin]!.liveSite as DouyinSite);
+    var site = (Sites.allSites[Constant.kHuya]!.liveSite as HuyaSite);
     site.cookie = cookie;
   }
 
   void setCookie(String cookie) {
     this.cookie = cookie;
     LocalStorageService.instance
-        .setValue(LocalStorageService.kDouyinCookie, cookie);
+        .setValue(LocalStorageService.kHuyaCookie, cookie);
     hasCookie.value = cookie.isNotEmpty;
     setSite();
   }
@@ -37,7 +36,7 @@ class DouyinAccountService extends GetxService implements ICookieAccountService 
   void clearCookie() {
     cookie = "";
     LocalStorageService.instance
-        .setValue(LocalStorageService.kDouyinCookie, "");
+        .setValue(LocalStorageService.kHuyaCookie, "");
     hasCookie.value = false;
     setSite();
   }
