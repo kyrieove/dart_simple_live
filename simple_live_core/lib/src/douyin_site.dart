@@ -65,26 +65,21 @@ class DouyinSite implements LiveSite {
     }
   }
 
-  /// 获取当前登录用户关注的主播列表（需要登录Cookie，包含sessionid）
-  /// 接口无需签名，cursor分页（此处以page映射offset）
-  /// 注意：仅web_rid非空的用户可导入（抖音平台限制，未开播用户无房间号）
+  /// 获取当前登录用户正在直播的关注（需要登录Cookie，包含sessionid）
+  /// 接口无需签名。抖音平台限制：未开播的主播没有房间号，无法导入，
+  /// 因此本方法返回"调用时刻正在直播的关注"，重新导入即可同步新开播的主播
   Future<LiveSearchAnchorResult> getFollowedAnchors({int page = 1}) async {
     if (cookie.isEmpty) {
       throw CoreError("抖音未登录，请先在账号管理中登录");
     }
     var result = await HttpClient.instance.getJson(
-      "https://live.douyin.com/webcast/user/follow/list/",
+      "https://live.douyin.com/webcast/web/feed/follow/",
       queryParameters: {
         "aid": 6383,
-        "app_name": "douyin_web",
-        "live_id": 1,
-        "device_platform": "web",
-        "language": "zh-CN",
-        "browser_platform": "Win32",
-        "browser_name": "Chrome",
-        "browser_version": "126.0.0.0",
-        "offset": (page - 1) * 50,
-        "count": 50,
+        "device_platform": "webapp",
+        "channel": "channel_pc_web",
+        "request_tag_from": "web",
+        "scene": "aweme_pc_follow_top",
       },
       header: {
         "cookie": cookie,
@@ -97,23 +92,25 @@ class DouyinSite implements LiveSite {
           "获取关注列表失败(${result["status_code"]})");
     }
     var items = <LiveAnchorItem>[];
-    for (var user in result["data"]?["users"] ?? []) {
-      var webRid = user["web_rid"]?.toString() ?? "";
+    for (var item in result["data"]?["data"] ?? []) {
+      var webRid = item["web_rid"]?.toString() ?? "";
       if (webRid.isEmpty) {
         continue;
       }
-      var avatars = user["avatar_thumb"]?["url_list"];
+      var room = item["room"] ?? {};
+      var owner = room["owner"] ?? {};
+      var avatars = owner["avatar_thumb"]?["url_list"];
       items.add(LiveAnchorItem(
         roomId: webRid,
         avatar: (avatars is List && avatars.isNotEmpty)
             ? avatars.first.toString()
             : "",
-        userName: user["nickname"]?.toString() ?? "",
-        liveStatus: false,
+        userName: owner["nickname"]?.toString() ?? "",
+        liveStatus: true,
       ));
     }
-    var hasMore = result["data"]?["has_more"] == true;
-    return LiveSearchAnchorResult(hasMore: hasMore, items: items);
+    // 服务端一次性返回当前在播的关注的全部直播间
+    return LiveSearchAnchorResult(hasMore: false, items: items);
   }
 
   @override
