@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:simple_live_core/src/common/convert_helper.dart';
+import 'package:simple_live_core/src/common/core_error.dart';
 import 'package:simple_live_core/src/common/http_client.dart';
 import 'package:simple_live_core/src/danmaku/bilibili_danmaku.dart';
 import 'package:simple_live_core/src/interface/live_danmaku.dart';
@@ -383,6 +384,40 @@ class BiliBiliSite implements LiveSite {
       items.add(anchorItem);
     }
     return LiveSearchAnchorResult(hasMore: items.length >= 40, items: items);
+  }
+
+  /// 获取当前登录用户关注的主播列表（需要登录Cookie）
+  /// 接口单页上限为10条，hasMore由totalPage计算
+  Future<LiveSearchAnchorResult> getFollowedAnchors({int page = 1}) async {
+    var result = await HttpClient.instance.getJson(
+      "https://api.live.bilibili.com/xlive/web-ucenter/user/following",
+      queryParameters: {
+        "page": page,
+        "page_size": 10,
+        "ignoreRecord": 1,
+        "hit_ab": "true",
+      },
+      header: await getHeader(),
+    );
+    if (result["code"] != 0) {
+      throw CoreError(result["message"]?.toString() ?? "获取关注列表失败");
+    }
+    var items = <LiveAnchorItem>[];
+    var totalPage = asT<int?>(result["data"]?["totalPage"]) ?? 1;
+    for (var item in result["data"]?["list"] ?? []) {
+      var roomId = item["roomid"]?.toString() ?? "";
+      //从未开播过的主播roomid可能为0，跳过
+      if (roomId.isEmpty || roomId == "0") {
+        continue;
+      }
+      items.add(LiveAnchorItem(
+        roomId: roomId,
+        avatar: item["face"]?.toString() ?? "",
+        userName: item["uname"]?.toString() ?? "",
+        liveStatus: (asT<int?>(item["live_status"]) ?? 0) == 1,
+      ));
+    }
+    return LiveSearchAnchorResult(hasMore: page < totalPage, items: items);
   }
 
   @override

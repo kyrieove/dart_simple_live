@@ -1,0 +1,45 @@
+name: analyze-only
+
+# 仅做 flutter analyze 静态检查验证编译，不构建、不产出任何APK
+on:
+    push:
+        branches:
+            - "feat/**"
+    workflow_dispatch:
+
+jobs:
+    analyze:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+
+            - name: Setup Java
+              uses: actions/setup-java@v6
+              with:
+                  distribution: zulu
+                  java-version: "17"
+
+            - name: Setup Flutter
+              uses: subosito/flutter-action@v2
+              with:
+                  flutter-version-file: simple_live_app/.fvmrc
+                  cache: true
+
+            - name: Analyze simple_live_core
+              run: |
+                  cd simple_live_core
+                  flutter pub get
+                  flutter analyze
+
+            - name: Analyze simple_live_app
+              run: |
+                  cd simple_live_app
+                  flutter pub get
+                  flutter analyze
+
+            - name: Analyze simple_live_tv_app
+              run: |
+                  cd simple_live_tv_app
+                  flutter pub get
+                  flutter analyze

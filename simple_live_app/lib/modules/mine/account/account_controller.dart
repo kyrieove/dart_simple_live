@@ -3,10 +3,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
+import 'package:simple_live_app/app/constant.dart';
+import 'package:simple_live_app/app/sites.dart';
 import 'package:simple_live_app/app/utils.dart';
+import 'package:simple_live_app/models/db/follow_user.dart';
 import 'package:simple_live_app/routes/route_path.dart';
 import 'package:simple_live_app/services/bilibili_account_service.dart';
+import 'package:simple_live_app/services/db_service.dart';
 import 'package:simple_live_app/services/douyin_account_service.dart';
+import 'package:simple_live_app/services/follow_service.dart';
 import 'package:simple_live_core/simple_live_core.dart';
 
 class AccountController extends GetxController {
@@ -77,6 +82,66 @@ class AccountController extends GetxController {
     }
     BiliBiliAccountService.instance.setCookie(cookie);
     await BiliBiliAccountService.instance.loadUserInfo();
+  }
+
+  /// 导入B站关注的主播到本地关注列表
+  Future<void> importBiliBiliFollow() async {
+    if (!BiliBiliAccountService.instance.logined.value) {
+      SmartDialog.showToast("请先登录哔哩哔哩账号");
+      return;
+    }
+    var site = Sites.allSites[Constant.kBiliBili]!.liveSite as BiliBiliSite;
+    if (site.cookie.isEmpty) {
+      SmartDialog.showToast("哔哩哔哩登录状态失效，请重新登录");
+      return;
+    }
+    SmartDialog.showLoading(msg: "正在获取关注列表...");
+    var added = 0;
+    var skipped = 0;
+    var success = false;
+    try {
+      var page = 1;
+      //最多拉50页（500个），防止接口异常导致死循环
+      while (page <= 50) {
+        var result = await site.getFollowedAnchors(page: page);
+        for (var anchor in result.items) {
+          var id = "${site.id}_${anchor.roomId}";
+          //已关注的跳过，避免覆盖用户设置的标签
+          if (DBService.instance.followBox.containsKey(id)) {
+            skipped++;
+            continue;
+          }
+          await DBService.instance.addFollow(
+            FollowUser(
+              id: id,
+              roomId: anchor.roomId,
+              siteId: site.id,
+              userName: anchor.userName,
+              face: anchor.avatar,
+              addTime: DateTime.now(),
+            ),
+          );
+          added++;
+        }
+        if (!result.hasMore) {
+          break;
+        }
+        page++;
+      }
+      await FollowService.instance.loadData(updateStatus: false);
+      success = true;
+    } catch (e) {
+      SmartDialog.showToast("导入失败：$e");
+    } finally {
+      SmartDialog.dismiss(status: SmartStatus.loading);
+    }
+    if (success) {
+      if (added == 0) {
+        SmartDialog.showToast(skipped > 0 ? "没有新的关注需要导入" : "B站没有关注的主播");
+      } else {
+        SmartDialog.showToast("导入完成，新增$added个关注");
+      }
+    }
   }
 
   void douyinTap() async {

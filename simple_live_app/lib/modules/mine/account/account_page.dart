@@ -38,6 +38,18 @@ class AccountPage extends GetView<AccountController> {
               onTap: controller.bilibiliTap,
             ),
           ),
+          Obx(
+            () => ListTile(
+              leading: const Icon(Icons.person_add_alt),
+              title: const Text("导入B站关注"),
+              subtitle: Text(
+                BiliBiliAccountService.instance.logined.value
+                    ? "将B站关注的主播同步到关注列表"
+                    : "需要先登录哔哩哔哩账号",
+              ),
+              onTap: controller.importBiliBiliFollow,
+            ),
+          ),
           ListTile(
             leading: Image.asset(
               'assets/images/douyu.png',
