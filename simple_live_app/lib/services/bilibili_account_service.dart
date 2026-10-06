@@ -25,6 +25,7 @@ class BiliBiliAccountService extends GetxService {
     cookie = LocalStorageService.instance
         .getValue(LocalStorageService.kBilibiliCookie, "");
     logined.value = cookie.isNotEmpty;
+    setSite();
     loadUserInfo();
     super.onInit();
   }

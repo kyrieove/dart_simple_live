@@ -280,7 +280,9 @@ class AccountController extends GetxController {
     if (HuyaAccountService.instance.hasCookie.value) {
       loggedSites.add(Constant.kHuya);
     }
-    if (DouyinAccountService.instance.hasCookie.value) {
+    // 抖音需要带sessionid的登录Cookie，仅配置ttwid时无法同步关注
+    if (DouyinAccountService.instance.hasCookie.value &&
+        DouyinAccountService.instance.cookie.contains("sessionid")) {
       loggedSites.add(Constant.kDouyin);
     }
     if (loggedSites.isEmpty) {
@@ -297,12 +299,15 @@ class AccountController extends GetxController {
           if (result.added > 0 || result.skipped > 0) {
             anySuccess = true;
           }
-          summary.add("${_siteName(siteId)}：新增${result.added}，已有${result.skipped}");
+          summary.add(
+              "${_siteName(siteId)}：新增${result.added}，已有${result.skipped}"
+              "${result.updated > 0 ? '，更新${result.updated}' : ''}");
         } catch (e) {
           summary.add("${_siteName(siteId)}：导入失败");
         }
       }
-      await FollowService.instance.loadData(updateStatus: false);
+      // 完整刷新（含开播状态），否则刚导入的直播中主播会显示未开播
+      await FollowService.instance.loadData();
     } finally {
       SmartDialog.dismiss(status: SmartStatus.loading);
     }
@@ -343,6 +348,7 @@ class AccountController extends GetxController {
     var tagObj = DBService.instance.getFollowTag(tagName);
     var added = 0;
     var skipped = 0;
+    var updated = 0;
     var page = 1;
     // 单平台最多拉250页，防止接口异常导致死循环
     while (page <= 250) {
@@ -364,6 +370,37 @@ class AccountController extends GetxController {
         if (DBService.instance.followBox.containsKey(id)) {
           skipped++;
           continue;
+        }
+        // 抖音房间号会轮换：同名主播已存在时更新其房间号，避免产生失效的重复关注
+        if (site is DouyinSite) {
+          FollowUser? sameName;
+          for (var f in DBService.instance.followBox.values) {
+            if (f.siteId == site.id && f.userName == anchor.userName) {
+              sameName = f;
+              break;
+            }
+          }
+          if (sameName != null) {
+            if (sameName.roomId != anchor.roomId) {
+              var oldTag = sameName.tag;
+              await DBService.instance.deleteFollow(sameName.id);
+              await DBService.instance.addFollow(
+                FollowUser(
+                  id: id,
+                  roomId: anchor.roomId,
+                  siteId: site.id,
+                  userName: anchor.userName,
+                  face: anchor.avatar,
+                  addTime: DateTime.now(),
+                  tag: oldTag,
+                ),
+              );
+              updated++;
+            } else {
+              skipped++;
+            }
+            continue;
+          }
         }
         await DBService.instance.addFollow(
           FollowUser(
@@ -387,12 +424,13 @@ class AccountController extends GetxController {
     if (tagObj != null) {
       await DBService.instance.updateFollowTag(tagObj);
     }
-    return _ImportResult(added: added, skipped: skipped);
+    return _ImportResult(added: added, skipped: skipped, updated: updated);
   }
 }
 
 class _ImportResult {
   final int added;
   final int skipped;
-  _ImportResult({required this.added, required this.skipped});
+  final int updated;
+  _ImportResult({required this.added, required this.skipped, this.updated = 0});
 }
