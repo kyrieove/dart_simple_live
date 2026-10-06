@@ -127,6 +127,81 @@ class FollowUserPage extends GetView<FollowUserController> {
             child: Row(
               children: [
                 Expanded(
+                  child: TextField(
+                    controller: controller.searchTextController,
+                    onChanged: controller.setSearchKeyword,
+                    textAlignVertical: TextAlignVertical.center,
+                    style: const TextStyle(fontSize: 14),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: "搜索主播",
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      suffixIcon: Obx(
+                        () => controller.searchKeyword.value.isEmpty
+                            ? const SizedBox.shrink()
+                            : IconButton(
+                                icon: const Icon(Icons.close, size: 18),
+                                onPressed: () {
+                                  controller.searchTextController.clear();
+                                  controller.setSearchKeyword("");
+                                },
+                              ),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+                PopupMenuButton<int>(
+                  icon: const Icon(Icons.sort),
+                  tooltip: "排序方式",
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 0,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.schedule),
+                          AppStyle.hGap8,
+                          Text("最近添加"),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 1,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.videocam),
+                          AppStyle.hGap8,
+                          Text("直播中优先"),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 2,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.sort_by_alpha),
+                          AppStyle.hGap8,
+                          Text("按名称"),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onSelected: controller.setSortMode,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: AppStyle.edgeInsetsL8,
+            child: Row(
+              children: [
+                Expanded(
                   child: Obx(
                     () => SingleChildScrollView(
                       scrollDirection: Axis.horizontal,

@@ -689,11 +689,9 @@ class DouyinSite implements LiveSite {
     return LivePlayUrl(urls: List<String>.from(quality.data));
   }
 
-  @override
-  Future<LiveSearchRoomResult> searchRooms(
-    String keyword, {
-    int page = 1,
-  }) async {
+  /// 直播搜索通用请求（返回原始data列表）
+  /// 注意：必须携带a_bogus签名，否则接口返回blocked
+  Future<dynamic> _liveSearch(String keyword, {int page = 1}) async {
     String serverUrl = "https://www.douyin.com/aweme/v1/web/live/search/";
     var uri = Uri.parse(serverUrl).replace(
       scheme: "https",
@@ -734,8 +732,7 @@ class DouyinSite implements LiveSite {
         "webid": "7382872326016435738",
       },
     );
-    //var requlestUrl = await getAbogusUrl(uri.toString());
-    var requlestUrl = uri.toString();
+    var requestUrl = DouyinSign.getAbogusUrl(uri.toString(), kDefaultUserAgent);
     var headResp = await HttpClient.instance.head(
       'https://live.douyin.com',
       header: headers,
@@ -750,9 +747,13 @@ class DouyinSite implements LiveSite {
         dyCookie += "$cookie;";
       }
     });
+    // 已登录用户使用完整cookie，降低风控概率
+    if (cookie.isNotEmpty) {
+      dyCookie = cookie;
+    }
 
     var result = await HttpClient.instance.getJson(
-      requlestUrl,
+      requestUrl,
       queryParameters: {},
       header: {
         "Authority": 'www.douyin.com',
@@ -773,8 +774,17 @@ class DouyinSite implements LiveSite {
       },
     );
     if (result == "" || result == 'blocked') {
-      throw Exception("抖音直播搜索被限制，请稍后再试");
+      throw CoreError("抖音直播搜索被限制，请稍后再试");
     }
+    return result;
+  }
+
+  @override
+  Future<LiveSearchRoomResult> searchRooms(
+    String keyword, {
+    int page = 1,
+  }) async {
+    var result = await _liveSearch(keyword, page: page);
     var items = <LiveRoomItem>[];
     for (var item in result["data"] ?? []) {
       var itemData = json.decode(item["lives"]["rawdata"].toString());
@@ -795,7 +805,28 @@ class DouyinSite implements LiveSite {
     String keyword, {
     int page = 1,
   }) async {
-    throw Exception("抖音暂不支持搜索主播，请直接搜索直播间");
+    var result = await _liveSearch(keyword, page: page);
+    var items = <LiveAnchorItem>[];
+    var seenUids = <String>{};
+    for (var item in result["data"] ?? []) {
+      var itemData = json.decode(item["lives"]["rawdata"].toString());
+      var owner = itemData["owner"] ?? {};
+      var uid = owner["id_str"]?.toString() ?? "";
+      if (uid.isEmpty || seenUids.contains(uid)) {
+        continue;
+      }
+      seenUids.add(uid);
+      var avatars = owner["avatar_thumb"]?["url_list"];
+      items.add(LiveAnchorItem(
+        roomId: owner["web_rid"]?.toString() ?? "",
+        avatar: (avatars is List && avatars.isNotEmpty)
+            ? avatars.first.toString()
+            : "",
+        userName: owner["nickname"]?.toString() ?? "",
+        liveStatus: true,
+      ));
+    }
+    return LiveSearchAnchorResult(hasMore: items.length >= 10, items: items);
   }
 
   @override

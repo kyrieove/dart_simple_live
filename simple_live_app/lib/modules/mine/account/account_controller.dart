@@ -335,6 +335,12 @@ class AccountController extends GetxController {
 
   Future<_ImportResult> _importFromSite(String siteId) async {
     var site = Sites.allSites[siteId]!.liveSite;
+    // 平台标签：导入的关注自动归类
+    var tagName = _siteName(siteId);
+    if (!DBService.instance.getFollowTagExistByTag(tagName)) {
+      await FollowService.instance.addFollowUserTag(tagName);
+    }
+    var tagObj = DBService.instance.getFollowTag(tagName);
     var added = 0;
     var skipped = 0;
     var page = 1;
@@ -367,14 +373,19 @@ class AccountController extends GetxController {
             userName: anchor.userName,
             face: anchor.avatar,
             addTime: DateTime.now(),
+            tag: tagName,
           ),
         );
+        tagObj?.userId.add(id);
         added++;
       }
       if (!result.hasMore) {
         break;
       }
       page++;
+    }
+    if (tagObj != null) {
+      await DBService.instance.updateFollowTag(tagObj);
     }
     return _ImportResult(added: added, skipped: skipped);
   }

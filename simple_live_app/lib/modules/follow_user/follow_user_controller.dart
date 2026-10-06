@@ -1,6 +1,7 @@
 // ignore_for_file: invalid_use_of_protected_member
 
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:simple_live_app/app/controller/base_controller.dart';
@@ -26,6 +27,14 @@ class FollowUserController extends BasePageController<FollowUser> {
 
   // 用户自定义标签
   RxList<FollowUserTag> userTagList = <FollowUserTag>[].obs;
+
+  /// 搜索关键词（按主播名过滤）
+  var searchKeyword = "".obs;
+
+  TextEditingController searchTextController = TextEditingController();
+
+  /// 排序模式 0:最近添加 1:直播中优先 2:按名称
+  var sortMode = 0.obs;
 
   @override
   void onInit() {
@@ -57,14 +66,14 @@ class FollowUserController extends BasePageController<FollowUser> {
       return Future.value([]);
     }
     if (filterMode.value.tag == "全部") {
-      return FollowService.instance.followList.value;
+      return sortList(FollowService.instance.followList.value);
     } else if (filterMode.value.tag == "直播中") {
-      return FollowService.instance.liveList.value;
+      return sortList(FollowService.instance.liveList.value);
     } else if (filterMode.value.tag == "未开播") {
-      return FollowService.instance.notLiveList.value;
+      return sortList(FollowService.instance.notLiveList.value);
     } else {
       FollowService.instance.filterDataByTag(filterMode.value);
-      return FollowService.instance.curTagFollowList.value;
+      return sortList(FollowService.instance.curTagFollowList.value);
     }
   }
 
@@ -80,15 +89,53 @@ class FollowUserController extends BasePageController<FollowUser> {
 
   void filterData() {
     if (filterMode.value.tag == "全部") {
-      list.assignAll(FollowService.instance.followList.value);
+      list.assignAll(sortList(FollowService.instance.followList.value));
     } else if (filterMode.value.tag == "直播中") {
-      list.assignAll(FollowService.instance.liveList.value);
+      list.assignAll(sortList(FollowService.instance.liveList.value));
     } else if (filterMode.value.tag == "未开播") {
-      list.assignAll(FollowService.instance.notLiveList.value);
+      list.assignAll(sortList(FollowService.instance.notLiveList.value));
     } else {
       FollowService.instance.filterDataByTag(filterMode.value);
-      list.assignAll(FollowService.instance.curTagFollowList);
+      list.assignAll(sortList(FollowService.instance.curTagFollowList));
     }
+  }
+
+  /// 关键词过滤 + 排序
+  List<FollowUser> sortList(List<FollowUser> source) {
+    var items = source.toList();
+    var keyword = searchKeyword.value.trim().toLowerCase();
+    if (keyword.isNotEmpty) {
+      items = items
+          .where((x) => x.userName.toLowerCase().contains(keyword))
+          .toList();
+    }
+    switch (sortMode.value) {
+      case 1:
+        // 直播中优先，其余按添加时间倒序
+        items.sort((a, b) {
+          var c = b.liveStatus.value.compareTo(a.liveStatus.value);
+          if (c != 0) return c;
+          return b.addTime.compareTo(a.addTime);
+        });
+        break;
+      case 2:
+        items.sort((a, b) => a.userName.compareTo(b.userName));
+        break;
+      default:
+        items.sort((a, b) => b.addTime.compareTo(a.addTime));
+        break;
+    }
+    return items;
+  }
+
+  void setSearchKeyword(String keyword) {
+    searchKeyword.value = keyword;
+    filterData();
+  }
+
+  void setSortMode(int mode) {
+    sortMode.value = mode;
+    filterData();
   }
 
   void setFilterMode(FollowUserTag tag) {
@@ -194,6 +241,7 @@ class FollowUserController extends BasePageController<FollowUser> {
   @override
   void onClose() {
     onUpdatedIndexedStream?.cancel();
+    searchTextController.dispose();
     super.onClose();
   }
 }
