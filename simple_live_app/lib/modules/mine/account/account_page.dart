@@ -60,7 +60,7 @@ class AccountPage extends GetView<AccountController> {
             subtitle: Obx(
               () => Text(DouyuAccountService.instance.hasCookie.value
                   ? "已登录"
-                  : "Cookie登录后可同步关注"),
+                  : "点击登录，登录后可同步关注"),
             ),
             trailing: Obx(
               () => DouyuAccountService.instance.hasCookie.value
@@ -79,7 +79,7 @@ class AccountPage extends GetView<AccountController> {
             subtitle: Obx(
               () => Text(HuyaAccountService.instance.hasCookie.value
                   ? "已登录"
-                  : "Cookie登录后可同步关注"),
+                  : "点击登录，登录后可同步关注"),
             ),
             trailing: Obx(
               () => HuyaAccountService.instance.hasCookie.value
@@ -99,8 +99,8 @@ class AccountPage extends GetView<AccountController> {
               subtitle: Text(DouyinAccountService.instance.hasCookie.value
                   ? (DouyinAccountService.instance.cookie.contains("sessionid")
                       ? "已登录"
-                      : "已配置ttwid")
-                  : "使用默认 ttwid"),
+                      : "未登录（点击登录）")
+                  : "点击登录，登录后可同步关注"),
               trailing: DouyinAccountService.instance.hasCookie.value
                   ? const Icon(Icons.settings_outlined)
                   : const Icon(Icons.chevron_right),

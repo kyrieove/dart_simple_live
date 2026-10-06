@@ -57,6 +57,9 @@ class RoutePath {
   /// BiliBili 二维码登录
   static const kBiliBiliQRLogin = "/settings/account/bilibili/qr_login";
 
+  /// 通用网页Cookie登录（斗鱼/虎牙/抖音）
+  static const kCookieWebviewLogin = "/settings/account/cookie_login";
+
   /// 数据同步
   static const kLocalSync = "/local_sync";
 
