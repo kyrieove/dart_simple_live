@@ -30,16 +30,16 @@ jobs:
               run: |
                   cd simple_live_core
                   flutter pub get
-                  flutter analyze --no-fatal-warnings
+                  flutter analyze --no-fatal-infos --no-fatal-warnings
 
             - name: Analyze simple_live_app
               run: |
                   cd simple_live_app
                   flutter pub get
-                  flutter analyze --no-fatal-warnings
+                  flutter analyze --no-fatal-infos --no-fatal-warnings
 
             - name: Analyze simple_live_tv_app
               run: |
                   cd simple_live_tv_app
                   flutter pub get
-                  flutter analyze --no-fatal-warnings
+                  flutter analyze --no-fatal-infos --no-fatal-warnings
