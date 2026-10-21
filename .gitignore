@@ -1,5 +1,8 @@
 simple_live_app/.vscode/settings.json
 simple_live_tv_app/.vscode/settings.json
 
+# 图标生成脚本的中间产物
+tools/_icon_out/
+
 # macOS Spotlight Search index file
 *.DS_Store
