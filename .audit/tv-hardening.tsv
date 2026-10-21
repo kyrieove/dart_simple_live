@@ -22,3 +22,13 @@ ts	phase	decision	why	evidence	result
 2026-10-22T01:45:50	fix	初始焦点不再靠 Focus 的 autofocus, 改成首帧后显式 requestFocus	autofocus 不可靠, 遥控器第一下 OK 可能落到右上角设置上	模拟器截图 focus_rail.png	已修
 2026-10-22T01:45:50	ui	用户给了一张新 logo, 把外圈白底抠掉换成深色渐变, 内圈播放三角做成镂空	原图是白底方图, 直接当图标在深色桌面上很突兀	assets/images/app_logo_source.png; tools/gen_app_icon.py	桌面图标和横幅都已换
 2026-10-22T01:45:50	ui	顶栏的小图标也换成新 logo	界面里的 logo 和桌面图标对不上会显廉价	assets/images/app_logo.png	已换
+2026-10-22T02:36:20	feature	观看习惯排序这条主线在 trail 里漏记了, 补上	用户第一个需求就是主页按观看习惯排序, 实现散在 hot_live_controller.dart 的 orderedSites/sortByWatchHabit 和 follow_user_service.dart 的 sortList 里, 默认开关在设置-关注页	simple_live_tv_app/lib/modules/hot_live/hot_live_controller.dart:42; simple_live_tv_app/lib/services/follow_user_service.dart:71	已实现, 但排序落在热门直播页而不是用户点名的主页
+2026-10-22T02:36:20	review	让一个只读子代理复核播放恢复状态机和这份 trail, 结论是 FAIL: 我上一版重写还残留同类死路	自己写的代码自己看会有盲区, 而且 trail 里已修的说法比代码实际支持的强	.audit/tv-hardening.tsv; 子代理审阅结论(本轮会话)	发现 4 个 HIGH + 4 个 MEDIUM
+2026-10-22T02:36:20	fix	按审阅结论补修: 首屏取不到播放地址时明确置为 failed, 不再停在连接中看不出问题	原来 getPlayQualites/getPlayUrl 把异常吞掉只弹个 toast, playUrls 空了看门狗直接不跑, 页面又没有 connecting 的提示层, 等于又回到只能退出重进	live_room_controller.dart loadData/getPlayQualites	已修
+2026-10-22T02:36:20	fix	按审阅结论补修: setPlayer 和 getPlayUrl 都带世代号校验, 被作废的恢复流程不能再打开旧地址	原来的世代号只在调用方 await 之后检查, 旧流程已经 player.open 完了, 新直链又被旧直链顶掉	live_room_controller.dart setPlayer/getPlayUrl	已修
+2026-10-22T02:36:20	fix	按审阅结论补修: 断流重连有上限, 连不上 3 次就报失败让人手动重试; 取不到地址不再当成恢复成功	一打开就 EOF 的流会永远重连下去, 而且 getPlayUrl 返回空地址时 handleNoVideo 会误报已恢复, 页面看着正常其实黑屏	live_room_controller.dart _recoverStream/handleNoVideo	已修
+2026-10-22T02:36:20	fix	按审阅结论补修: 观看时长的累加挪到宽限期前面, 每次打开媒体的头 25 秒也计入	原来累加写在 25 秒宽限的 return 后面, 每次打开媒体都漏 25 秒, 恢复越频繁漏得越多	live_room_controller.dart checkPlaybackHealth	已修
+2026-10-22T02:36:20	fix	按审阅结论补修: 主页的英雄卡和最近观看卡片复用焦点节点, 不再每次重建都 new 一个	审阅发现我修完关注列表的焦点节点泄漏, 主页新代码又引入了同一个模式	home_controller.dart focusNodeFor	已修
+2026-10-22T02:36:20	fix	修正 trail 里证据指针: 截图都在 .workbuddy-ai/ 下面, 仓库里只有 git 能查	之前写的 uiprot/compare.png、v2_zoom.png 从仓库里点不开, 审阅代理指出来了	.workbuddy-ai/uiprot/compare.png; .workbuddy-ai/shot/v2_zoom.png; .workbuddy-ai/shot/proj_final.png	指针已补全
+2026-10-22T02:36:20	verify	交叉审阅只能在同一个模型上做, 算自审	本机模型目录里只有 minimax/MiniMax-M3.1-Flash, claude 和 grok 都调不起来, poteto-mode 要求的不同模型家族满足不了	会话列表里的 effective_model 都是同一个	已降级为自审并如实标注
+2026-10-22T02:36:20	verify	弹幕关掉后的 CPU 降幅没有单独量出来	真机上量的时候设置面板还开着, 而且导航没准确切到弹幕开关, 数据被污染了; 只能报播放中的 35% CPU / 190MB RSS	adb top 采样	只报了可靠的那组数

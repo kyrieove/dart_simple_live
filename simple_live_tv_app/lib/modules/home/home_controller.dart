@@ -19,6 +19,14 @@ class HomeController extends BaseController {
 
   StreamSubscription<dynamic>? _historySubscription;
 
+  /// 卡片的焦点节点, 按房间 id 复用
+  ///
+  /// 放在 build 里 new 的话, 列表每重建一次就漏一个焦点节点。
+  final Map<String, AppFocusNode> _cardFocusNodes = {};
+
+  AppFocusNode focusNodeFor(String id) =>
+      _cardFocusNodes.putIfAbsent(id, () => AppFocusNode());
+
   /// 左侧导航的焦点节点
   ///
   /// 预先建好, 首帧后主动把焦点交给第一个入口。

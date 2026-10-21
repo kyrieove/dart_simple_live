@@ -157,7 +157,7 @@ class HomePage extends GetView<HomeController> {
       if (site == null) {
         return const SizedBox.shrink();
       }
-      var focusNode = AppFocusNode();
+      var focusNode = controller.focusNodeFor(item.id);
       return HighlightWidget(
         focusNode: focusNode,
         borderRadius: AppStyle.radius16,
@@ -291,7 +291,7 @@ class HomePage extends GetView<HomeController> {
     if (site == null) {
       return const SizedBox.shrink();
     }
-    var focusNode = AppFocusNode();
+    var focusNode = controller.focusNodeFor(item.id);
     return HighlightWidget(
       focusNode: focusNode,
       borderRadius: AppStyle.radius12,
@@ -466,7 +466,7 @@ class HomePage extends GetView<HomeController> {
                     padding: AppStyle.edgeInsetsA40,
                     itemBuilder: (_, i) {
                       var item = FollowUserService.instance.list[i];
-                      var foucsNode = AppFocusNode();
+                      var foucsNode = item.focusNode;
                       return HighlightListTile(
                         autofocus: i == 0,
                         leading: NetImage(
