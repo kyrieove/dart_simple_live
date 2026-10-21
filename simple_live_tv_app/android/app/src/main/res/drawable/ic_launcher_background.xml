@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 自适应图标背景层：深蓝渐变，由系统按图标形状裁剪 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="315"
+        android:startColor="#14213D"
+        android:centerColor="#1D4E8C"
+        android:endColor="#2F80ED" />
+</shape>
