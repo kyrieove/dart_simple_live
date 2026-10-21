@@ -328,9 +328,13 @@ class PlayerController extends BaseController
   @override
   void onClose() async {
     Log.w("播放器关闭");
+    hideControlsTimer?.cancel();
+    hideSeekTipTimer?.cancel();
     disposeStream();
     disposeDanmakuController();
     await resetSystem();
+    // 先停再释放, 少留一个还占着解码器的 mpv 实例
+    await player.stop();
     await player.dispose();
     super.onClose();
   }

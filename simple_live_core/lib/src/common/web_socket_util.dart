@@ -2,11 +2,7 @@ import 'dart:async';
 
 import 'package:web_socket_channel/io.dart';
 
-enum SocketStatus {
-  connected,
-  failed,
-  closed,
-}
+enum SocketStatus { connected, failed, closed }
 
 class WebScoketUtils {
   SocketStatus status = SocketStatus.closed;
@@ -61,7 +57,8 @@ class WebScoketUtils {
   StreamSubscription<dynamic>? streamSubscription;
 
   void connect({bool retry = false}) async {
-    close();
+    // 只关连接本身, 不能碰重连计划, 否则重连只会试一次
+    _closeSocket();
     try {
       var wsurl = url;
       if (backupUrl != null && backupUrl!.isNotEmpty && retry) {
@@ -80,7 +77,10 @@ class WebScoketUtils {
         connect(retry: true);
         return;
       }
-      onError(e, e);
+      // 主地址和备用地址都连不上, 交给重连逻辑继续尝试,
+      // 等真的重连不上了再通知调用方
+      status = SocketStatus.failed;
+      reconnect();
     }
   }
 
@@ -99,12 +99,11 @@ class WebScoketUtils {
   }
 
   void initHeartBeat() {
-    heartBeatTimer = Timer.periodic(
-      Duration(milliseconds: heartBeatTime),
-      (timer) {
-        onHeartBeat?.call();
-      },
-    );
+    heartBeatTimer = Timer.periodic(Duration(milliseconds: heartBeatTime), (
+      timer,
+    ) {
+      onHeartBeat?.call();
+    });
   }
 
   void receiveMessage(dynamic data) {
@@ -132,31 +131,39 @@ class WebScoketUtils {
     }
   }
 
-  void close() {
+  /// 只关掉连接, 保留重连计划
+  void _closeSocket() {
     status = SocketStatus.closed;
 
     streamSubscription?.cancel();
-
-    reconnectTimer?.cancel();
-    reconnectTimer = null;
+    streamSubscription = null;
 
     webSocket?.sink.close();
+    webSocket = null;
 
     heartBeatTimer?.cancel();
     heartBeatTimer = null;
+  }
+
+  /// 彻底关闭, 包括重连计划
+  void close() {
+    _closeSocket();
+
+    reconnectTimer?.cancel();
+    reconnectTimer = null;
   }
 
   void reconnect() {
     status = SocketStatus.closed;
     if (reconnectTime < maxReconnectTime) {
       reconnectTime++;
-      reconnectTimer ??= Timer.periodic(Duration(seconds: 5), (timer) {
+      reconnectTimer?.cancel();
+      // 用一次性定时器, connect() 内部不会把下一次重连取消掉
+      reconnectTimer = Timer(Duration(seconds: 5), () {
         connect();
       });
     } else {
       onClose?.call("重连超过最大次数，与服务器断开连接");
-      reconnectTimer?.cancel();
-      reconnectTimer = null;
       close();
       return;
     }

@@ -31,6 +31,12 @@ class FollowUserService extends BasePageController<FollowUser> {
     super.onInit();
   }
 
+  /// 播放直播时暂停自动更新, 别在解码器正忙的时候去刷一堆请求
+  void pauseTimer() {
+    updateTimer?.cancel();
+    updateTimer = null;
+  }
+
   void initTimer() {
     if (AppSettingsController.instance.autoUpdateFollowEnable.value) {
       updateTimer?.cancel();
@@ -79,7 +85,10 @@ class FollowUserService extends BasePageController<FollowUser> {
         sortByHabit ? DBService.instance.getWatchCountMap() : <String, int>{};
 
     list.sort((a, b) {
-      var liveCompare = b.liveStatus.value.compareTo(a.liveStatus.value);
+      // 状态 0 是"还没查出来", 按未开播处理, 别让它排到未开播前面
+      var aStatus = a.liveStatus.value == 0 ? 1 : a.liveStatus.value;
+      var bStatus = b.liveStatus.value == 0 ? 1 : b.liveStatus.value;
+      var liveCompare = bStatus.compareTo(aStatus);
       if (liveCompare != 0) {
         return liveCompare;
       }

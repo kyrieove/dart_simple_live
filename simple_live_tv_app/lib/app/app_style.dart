@@ -1,35 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
-class AppColors {
-  static ColorScheme lightColorScheme = ColorScheme.fromSwatch(
-    primarySwatch: Colors.pink,
-    brightness: Brightness.dark,
-    //primaryColorDark: const Color(0xfff06595),
-    accentColor: const Color(0xfff06595),
-  );
-}
+import 'package:simple_live_tv_app/app/app_theme.dart';
 
 class AppStyle {
-  static ThemeData lightTheme = ThemeData(
-    colorScheme: AppColors.lightColorScheme,
-    appBarTheme: const AppBarTheme(
-      elevation: 0,
-      centerTitle: true,
-    ),
-    scaffoldBackgroundColor: const Color(0xfffafafa),
-    radioTheme: RadioThemeData(
-      fillColor: WidgetStateProperty.all(AppColors.lightColorScheme.primary),
-    ),
-    checkboxTheme: CheckboxThemeData(
-      fillColor: WidgetStateProperty.all(AppColors.lightColorScheme.primary),
-    ),
-    fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
-  );
-
   static SizedBox get vGap4 => SizedBox(
         height: 4.w,
       );
@@ -154,36 +129,31 @@ class AppStyle {
   static TextStyle get titleStyleWhite => TextStyle(
         color: Colors.white,
         fontSize: 40.w,
+        fontWeight: FontWeight.w700,
       );
   static TextStyle get titleStyleBlack => TextStyle(
         color: colorBlack33,
         fontSize: 40.w,
+        fontWeight: FontWeight.w700,
       );
   static TextStyle get textStyleWhite => TextStyle(
         color: Colors.white,
-        fontSize: 32.w,
+        fontSize: 30.w,
+        fontWeight: FontWeight.w600,
       );
   static TextStyle get textStyleBlack => TextStyle(
         color: colorBlack33,
-        fontSize: 32.w,
+        fontSize: 30.w,
+        fontWeight: FontWeight.w600,
       );
   static TextStyle get subTextStyleWhite => TextStyle(
-        color: Colors.white54,
-        fontSize: 24.w,
-        height: 1.0,
+        color: AppTheme.textSecondary,
+        fontSize: 23.w,
+        height: 1.2,
       );
   static TextStyle get subTextStyleBlack => TextStyle(
         color: Colors.black54,
-        fontSize: 24.w,
-        height: 1.0,
+        fontSize: 23.w,
+        height: 1.2,
       );
-
-  static List<BoxShadow> get highlightShadow => [
-        BoxShadow(
-          blurRadius: 6.w,
-          spreadRadius: 2.w,
-          color: Colors.pink.shade400,
-          //color: Color.fromARGB(255, 255, 120, 167),
-        )
-      ];
 }

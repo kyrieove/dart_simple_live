@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:simple_live_tv_app/app/app_focus_node.dart';
-import 'package:simple_live_tv_app/app/app_style.dart';
+import 'package:simple_live_tv_app/app/app_theme.dart';
 
 typedef FocusOnKeyDownCallback = KeyEventResult Function();
 
@@ -42,6 +43,8 @@ class HighlightWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    final focusColor = AppTheme.focusColor(accent);
     return FocusTraversalOrder(
       order: NumericFocusOrder(order),
       child: Focus(
@@ -75,15 +78,27 @@ class HighlightWidget extends StatelessWidget {
           onTap: onTap,
           child: Obx(
             () => AnimatedScale(
-              scale: focusNode.isFoucsed.value ? 1.1 : 1,
-              duration: const Duration(milliseconds: 200),
+              scale: focusNode.isFoucsed.value ? 1.06 : 1,
+              duration: const Duration(milliseconds: 180),
               child: GestureDetector(
                 onTap: onTap,
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: borderRadius,
+                    border: Border.all(
+                      color: focusNode.isFoucsed.value
+                          ? focusColor
+                          : Colors.transparent,
+                      width: 3,
+                    ),
                     boxShadow: focusNode.isFoucsed.value
-                        ? AppStyle.highlightShadow
+                        ? [
+                            BoxShadow(
+                              color: accent.withAlpha(70),
+                              blurRadius: 26.w,
+                              spreadRadius: 1.w,
+                            ),
+                          ]
                         : null,
                     color: (focusNode.isFoucsed.value || selected)
                         ? foucsedColor

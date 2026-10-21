@@ -68,28 +68,30 @@ class HotLivePage extends GetView<HotliveController> {
             ],
           ),
           AppStyle.vGap24,
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 36.w,
-            children: controller.orderedSites
-                .map(
-                  (e) => Obx(
-                    () => HighlightButton(
-                      icon: Image.asset(
-                        e.logo,
-                        width: 48.w,
-                        height: 48.w,
+          Obx(
+            () => Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 36.w,
+              children: controller.orderedSites
+                  .map(
+                    (e) => Obx(
+                      () => HighlightButton(
+                        icon: Image.asset(
+                          e.logo,
+                          width: 48.w,
+                          height: 48.w,
+                        ),
+                        text: e.name,
+                        selected: controller.siteId.value == e.id,
+                        focusNode: AppFocusNode(),
+                        onTap: () {
+                          controller.setSite(e.id);
+                        },
                       ),
-                      text: e.name,
-                      selected: controller.siteId.value == e.id,
-                      focusNode: AppFocusNode(),
-                      onTap: () {
-                        controller.setSite(e.id);
-                      },
                     ),
-                  ),
-                )
-                .toList(),
+                  )
+                  .toList(),
+            ),
           ),
           AppStyle.vGap24,
           Expanded(

@@ -4,6 +4,8 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:simple_live_tv_app/app/app_focus_node.dart';
 import 'package:simple_live_tv_app/app/app_style.dart';
+import 'package:simple_live_tv_app/app/app_theme.dart';
+import 'package:simple_live_tv_app/widgets/highlight_widget.dart';
 import 'package:simple_live_tv_app/app/controller/app_settings_controller.dart';
 import 'package:simple_live_tv_app/app/utils.dart';
 import 'package:simple_live_tv_app/modules/settings/settings_controller.dart';
@@ -204,6 +206,46 @@ class SettingsPage extends GetView<SettingsController> {
             onChanged: (e) {
               AppSettingsController.instance.setQualityLevel(e);
             },
+          ),
+        ),
+        AppStyle.vGap24,
+        Padding(
+          padding: AppStyle.edgeInsetsH20,
+          child: Text(
+            "主题色",
+            style: AppStyle.textStyleWhite,
+          ),
+        ),
+        AppStyle.vGap12,
+        Obx(
+          () => Row(
+            children: AppTheme.presetAccents.map((c) {
+              var selected =
+                  AppSettingsController.instance.styleColor.value == c.toARGB32();
+              return Padding(
+                padding: EdgeInsets.only(right: 16.w),
+                child: HighlightWidget(
+                  focusNode: AppFocusNode(),
+                  foucsedColor: c,
+                  borderRadius: AppStyle.radius12,
+                  color: c.withAlpha(90),
+                  onTap: () {
+                    AppSettingsController.instance.setStyleColor(c.toARGB32());
+                  },
+                  child: Container(
+                    width: 64.w,
+                    height: 64.w,
+                    decoration: BoxDecoration(
+                      color: c,
+                      borderRadius: AppStyle.radius12,
+                      border: selected
+                          ? Border.all(color: Colors.white, width: 4)
+                          : null,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ),
       ],
@@ -508,7 +550,7 @@ class SettingsPage extends GetView<SettingsController> {
           focusNode: controller.versionFocusNode,
           title: "版本",
           subtitle: "v${Utils.packageInfo.version}",
-          onTap: ()=>{},
+          onTap: () => {},
         ),
       ],
     );

@@ -169,39 +169,13 @@ Widget buildControls(VideoState videoState, LiveRoomController controller) {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.arrow_circle_up_rounded,
-                      color: Colors.white,
-                      size: 40.w,
-                    ),
-                    AppStyle.hGap16,
-                    Text("上一频道", style: AppStyle.textStyleWhite),
-                    AppStyle.hGap32,
-                    Icon(
-                      Icons.arrow_circle_down_rounded,
-                      color: Colors.white,
-                      size: 40.w,
-                    ),
-                    AppStyle.hGap16,
-                    Text("下一频道", style: AppStyle.textStyleWhite),
-                    AppStyle.hGap32,
-                    Icon(
-                      Icons.arrow_circle_left_outlined,
-                      color: Colors.white,
-                      size: 40.w,
-                    ),
-                    AppStyle.hGap16,
-                    Text("关注列表", style: AppStyle.textStyleWhite),
-                    AppStyle.hGap32,
-                    Icon(
-                      Icons.arrow_circle_right_outlined,
-                      color: Colors.white,
-                      size: 40.w,
-                    ),
-                    AppStyle.hGap16,
-                    Icon(Icons.menu, color: Colors.white, size: 44.w),
-                    AppStyle.hGap16,
-                    Text("设置", style: AppStyle.textStyleWhite),
+                    _buildActionChip(Icons.keyboard_arrow_up_rounded, "上一频道"),
+                    AppStyle.hGap20,
+                    _buildActionChip(Icons.keyboard_arrow_down_rounded, "下一频道"),
+                    AppStyle.hGap20,
+                    _buildActionChip(Icons.favorite_border, "关注列表"),
+                    AppStyle.hGap20,
+                    _buildActionChip(Icons.tune, "设置"),
                   ],
                 ),
               ],
@@ -229,19 +203,18 @@ Widget buildDanmuView(VideoState videoState, LiveRoomController controller) {
     top: padding.top,
     bottom: padding.bottom,
     child: Obx(
-      () => Offstage(
-        offstage: !controller.showDanmakuState.value,
-        child: Padding(
-          padding: controller.fullScreenState.value
-              ? EdgeInsets.only(
-                  top: AppSettingsController.instance.danmuTopMargin.value,
-                  bottom:
-                      AppSettingsController.instance.danmuBottomMargin.value,
-                )
-              : EdgeInsets.zero,
-          child: controller.danmakuView!,
-        ),
-      ),
+      () => controller.showDanmakuState.value
+          ? Padding(
+              padding: controller.fullScreenState.value
+                  ? EdgeInsets.only(
+                      top: AppSettingsController.instance.danmuTopMargin.value,
+                      bottom: AppSettingsController
+                          .instance.danmuBottomMargin.value,
+                    )
+                  : EdgeInsets.zero,
+              child: controller.danmakuView!,
+            )
+          : const SizedBox.shrink(),
     ),
   );
 }
@@ -683,4 +656,24 @@ void showFollowUser(LiveRoomController controller) {
     // 还原焦点
     controller.focusNode.requestFocus();
   });
+}
+
+/// 控制条上的一个操作按钮
+Widget _buildActionChip(IconData icon, String label) {
+  return Container(
+    padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 10.w),
+    decoration: BoxDecoration(
+      color: Colors.white.withAlpha(24),
+      borderRadius: AppStyle.radius12,
+      border: Border.all(color: Colors.white12, width: 1),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.white, size: 30.w),
+        AppStyle.hGap8,
+        Text(label, style: AppStyle.textStyleWhite),
+      ],
+    ),
+  );
 }

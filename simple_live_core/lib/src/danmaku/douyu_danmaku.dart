@@ -23,6 +23,8 @@ class DouyuDanmaku implements LiveDanmaku {
 
   @override
   Future start(dynamic args) async {
+    // 先关掉上一条连接, 否则快速切台会越积越多僵尸连接
+    webScoketUtils?.close();
     webScoketUtils = WebScoketUtils(
       url: serverUrl,
       heartBeatTime: heartbeatTime,
@@ -47,10 +49,12 @@ class DouyuDanmaku implements LiveDanmaku {
   }
 
   void joinRoom(roomId) {
-    webScoketUtils
-        ?.sendMessage(serializeDouyu("type@=loginreq/roomid@=$roomId/"));
     webScoketUtils?.sendMessage(
-        serializeDouyu("type@=joingroup/rid@=$roomId/gid@=-9999/"));
+      serializeDouyu("type@=loginreq/roomid@=$roomId/"),
+    );
+    webScoketUtils?.sendMessage(
+      serializeDouyu("type@=joingroup/rid@=$roomId/gid@=-9999/"),
+    );
   }
 
   @override
@@ -122,8 +126,9 @@ class DouyuDanmaku implements LiveDanmaku {
   String? deserializeDouyu(List<int> buffer) {
     try {
       var reader = BinaryReader(Uint8List.fromList(buffer));
-      int fullMsgLength =
-          reader.readInt32(endian: Endian.little); //fullMsgLength
+      int fullMsgLength = reader.readInt32(
+        endian: Endian.little,
+      ); //fullMsgLength
       reader.readInt32(endian: Endian.little); //fullMsgLength2
       int bodyLength = fullMsgLength - 9;
       reader.readShort(endian: Endian.little); //packType

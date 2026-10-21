@@ -1,0 +1,24 @@
+ts	phase	decision	why	evidence	result
+2026-10-21T19:02:00Z	start	这一轮接着上一轮的 TV 端 bug 修复往下做, 目标从"改完 3 个 bug"扩到"排查潜在问题 + 重构美化 UI + 装机验证"	用户先让查潜在问题并修复, 随后授权重构美化 UI, 并且说明要去睡觉, 授权问题一律按推荐来	agent session mvs_e9ac93491e924c9f845c76cafba84fe6	open
+2026-10-21T19:20:00Z	frame	完成判据定为"投影仪上装得上、播得出画、主页按习惯排序、analyze 0 issue", 严谨级别取高(用户已授权且全部可回滚)	projection 端改动直接进用户客厅设备, 一次失败代价大; 但所有改动都能重装回退, 不用为不可逆操作停机	.gitignore, .audit/tv-hardening.tsv	已定
+2026-10-21T19:35:00Z	harness	本地装 Flutter 3.47.1 + Android SDK 36 + NDK 28.2, 放弃 GitHub Actions 路径	Actions 被 GitHub 关掉了(fork 策略, API 改不动), 推 tag 不触发; 本地编译工具链与 CI 完全一致, 增量只要 1~2 分钟, 比等 CI 还快	flutter --version 输出 3.47.1; aapt2 dump badging 与 CI 产物同签名	可用
+2026-10-21T19:50:00Z	harness	起了 1920x1080 / density 240 的无头模拟器专门做 UI 视觉验证	用户要关投影仪, 真机没法再测; 模拟器分辨率和 ScreenUtil 的 designSize 一致, 1 个 .w 就是 1 像素, 截图能直接跟投影仪对比	adb -s emulator-5554 shell wm size -> 1920x1080	可用
+2026-10-21T20:05:00Z	investigate	投影仪上采了一轮基线: 播放时 APP 占 35% CPU / PSS 99MB, 无 OOM、无 ANR、无 MediaCodec 报错	要判断"卡住"是不是内存或解码器的问题, 不能靠猜	adb shell top / dumpsys meminfo / logcat; 唯一 am_kill 是我自己 force-stop 的	内存和解码器不是原因
+2026-10-21T20:15:00Z	investigate	派三个只读子代理并行审: 播放状态机、资源生命周期、数据层与排序	代码量大, 人工全读会撑爆上下文; 只读代理不会跟我的改动打架	三个 explore 代理的报告(见 git log 提交信息)	拿到 3 份带行号证据的报告
+2026-10-21T20:40:00Z	design	主页做了 3 个方向的原型并排截图对比, 选了 B(左导航栏 + 续播英雄卡 + 最近观看 + 关注网格)	投影仪最常见的动作是"接着看刚才的", 英雄卡一键续播; 次要入口放左侧常驻栏, 和 Aerial 桌面的操作习惯一致; C 太挤, A 没有层级	uiprot/compare.png 三个方向并排	已选 B
+2026-10-21T21:00:00Z	fix	core 里 4 个站点的 start() 先关掉上一条弹幕连接	快速切台会调两次 start(), 旧的那条连接没人关, 于是每切一次多一条永远在收弹幕还带心跳的僵尸连接, 越积越多	core/src/danmaku/*.dart 各加一行 webScoketUtils?.close()	已修
+2026-10-21T21:05:00Z	fix	弹幕关掉时把 DanmakuScreen 整个摘出组件树, 不用 Offstage	Offstage 只是不画, 子树还在: DanmakuScreen 的 10Hz setState 循环和 60fps PictureRecorder 一直在跑, 直接跟解码器抢 CPU, 这是弱机上"卡住"的第二个根因	player_controls.dart 改成条件渲染; canvas_danmaku 的 _startTick 每 100ms setState	已修
+2026-10-21T21:20:00Z	fix	播放恢复流程重写成"单一状态机 + 世代号": PlaybackPhase 枚举 + _recoveryEpoch	上一版有死路: 直链清空前先 await, 并发的 setPlayer 会被守卫挡掉, playUrls 变空后看门狗永久关闭; EOF 被当成"主播下播", 于是显示"未开播"且 OK 键不重试 —— 正是"必须退出重进"的症状	live_room_controller.dart 的 PlaybackPhase / _recoveryEpoch / _refreshPlayUrlInner	已修
+2026-10-21T21:25:00Z	fix	无画面检测加上和卡死检测一样的 25 秒宽限期	上一版无画面只等 12 秒, 慢设备上首帧可能要十几秒, 健康的流会被误判成"只有声音", 自愈链反而把流弄坏	live_room_controller.dart checkPlaybackHealth 里 sinceOpen < _openGrace 直接返回	已修
+2026-10-21T21:35:00Z	fix	观看时长改成只累计"播放器正常推进"的毫秒数, 不再按墙钟算	墙钟会把切后台几小时、以及卡住不动的时间都算成观看时长, 平台的观看时长榜单会被带偏	live_room_controller.dart _watchedMs; 仅在 playing && !buffering 时累加	已修
+2026-10-21T21:40:00Z	fix	History 新字段改成可空, 适配器保持生成器原样	上一版手写了 fields[6] as int? ?? 0, 哪天有人跑 build_runner 重新生成就会变成 as int, 老记录一读就抛异常, 应用直接起不来	history.dart 字段改 int?; history.g.dart 用 as int?	已修
+2026-10-21T21:50:00Z	fix	播放期间暂停关注状态自动更新, 退出再恢复	自动更新每 10 分钟对每个关注对象发一次状态请求, 正好撞在解码器最忙的时候	follow_user_service.pauseTimer(); 直播间 onInit/onClose 调它	已修
+2026-10-21T22:00:00Z	fix	补齐各类释放: 控件隐藏计时器、TabController、滚动控制器、播放器先 stop 再 dispose、关注项复用焦点节点	审计查出来的未释放对象, 长时间开着会攒; 焦点节点每次列表重建都新建一个, 关注列表一刷新就漏一批	player_controller / base_controller / settings_controller / follow_user.dart	已修
+2026-10-21T22:15:00Z	fix	主题色统一成蓝色, 焦点样式改用主题色, 删掉写死的粉色阴影	APP 图标和启动页都是蓝的, 界面却写死粉色; 设置里的"主题色"存了但主题根本不用	AppTheme.build(Color(styleColor)); HighlightWidget 用 colorScheme.primary; 删掉 AppStyle.highlightShadow	已修
+2026-10-21T22:40:00Z	verify	flutter analyze 0 issue, 出包后装模拟器截图核对界面	改了 20 多个文件, 编译不过一切白搭; UI 改动必须看图确认, 不能靠"我觉得对"	flutter analyze 输出 No issues found; 模拟器截图见交付报告	通过
+2026-10-21T23:10:00Z	assist	关掉投影仪厂商的"正在协助"浮层: persist.obe.REMOTE_DEBUG 置 false 并 force-stop 掉 com.obe.tv.superappmanager	这个浮层是厂商远程调试服务用 SYSTEM_ALERT_WINDOW 画的, 两个 BOOT_COMPLETED 接收器让它每次开机自启, 计时器一直跑; 等于厂商的远程通道常开	dumpsys window windows 找到窗口属主; getprop 确认 persist.obe.REMOTE_DEBUG=true; 关掉后截图确认右上角干净	已关, 截图已存
+2026-10-22T01:45:50	fix	把首页三个方向原型里选的 B 落成真代码, 改完发现焦点态是白底白字看不见	焦点反色时卡片背景变白, 文字却还是白色的, 遥控器上等于瞎了	uiprot/compare.png; 模拟器截图 v2_zoom.png	加 _label 助手, 焦点时文字翻黑
+2026-10-22T01:45:50	fix	导航栏宽度从 250 改 300, ListView 内边距只留左侧, 行改成 mainAxisSize.min	原来 ListView 左右各 48 内边距, 可用宽度只剩 154, 文字撑出白底	模拟器截图 v2_zoom.png	已修
+2026-10-22T01:45:50	fix	初始焦点不再靠 Focus 的 autofocus, 改成首帧后显式 requestFocus	autofocus 不可靠, 遥控器第一下 OK 可能落到右上角设置上	模拟器截图 focus_rail.png	已修
+2026-10-22T01:45:50	ui	用户给了一张新 logo, 把外圈白底抠掉换成深色渐变, 内圈播放三角做成镂空	原图是白底方图, 直接当图标在深色桌面上很突兀	assets/images/app_logo_source.png; tools/gen_app_icon.py	桌面图标和横幅都已换
+2026-10-22T01:45:50	ui	顶栏的小图标也换成新 logo	界面里的 logo 和桌面图标对不上会显廉价	assets/images/app_logo.png	已换

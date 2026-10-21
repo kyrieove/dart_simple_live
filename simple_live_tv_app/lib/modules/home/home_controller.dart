@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 
+import 'package:simple_live_tv_app/app/app_focus_node.dart';
 import 'package:simple_live_tv_app/app/constant.dart';
 import 'package:simple_live_tv_app/app/controller/base_controller.dart';
 import 'package:simple_live_tv_app/app/event_bus.dart';
@@ -17,6 +19,14 @@ class HomeController extends BaseController {
 
   StreamSubscription<dynamic>? _historySubscription;
 
+  /// 左侧导航的焦点节点
+  ///
+  /// 预先建好, 首帧后主动把焦点交给第一个入口。
+  /// 靠 Focus 的 autofocus 不稳: 桌面一行里还有别的可聚焦控件时,
+  /// 遥控器一按 OK 可能落到"设置"上, 而不是最常用的"热门直播"。
+  final List<AppFocusNode> navFocusNodes =
+      List.generate(5, (_) => AppFocusNode());
+
   Timer? _clockTimer;
 
   @override
@@ -30,6 +40,17 @@ class HomeController extends BaseController {
       },
     );
     super.onInit();
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    // 首帧之后焦点才挂上, 这时候再要
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (navFocusNodes.isNotEmpty) {
+        navFocusNodes.first.requestFocus();
+      }
+    });
   }
 
   void initTimer() {

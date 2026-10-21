@@ -46,8 +46,8 @@ class HotliveController extends BasePageController<LiveRoomItemExt> {
     }
     var siteDurationMap = DBService.instance.getSiteWatchDurationMap();
     sites.sort((a, b) {
-      var countCompare = (siteDurationMap[b.id] ?? 0)
-          .compareTo(siteDurationMap[a.id] ?? 0);
+      var countCompare =
+          (siteDurationMap[b.id] ?? 0).compareTo(siteDurationMap[a.id] ?? 0);
       if (countCompare != 0) {
         return countCompare;
       }
@@ -87,6 +87,31 @@ class HotliveController extends BasePageController<LiveRoomItemExt> {
     });
 
     return indexed.map((e) => e.value).toList();
+  }
+
+  @override
+  Future loadData() async {
+    await super.loadData();
+    // 整份列表一起排, 只排单页的话翻页以后顺序就乱了
+    sortByWatchHabit();
+  }
+
+  /// 看过的主播往前排, 看量相同时保持平台原有的推荐顺序
+  void sortByWatchHabit() {
+    if (!AppSettingsController.instance.sortByWatchHabit.value) {
+      return;
+    }
+    var watchCountMap = DBService.instance.getWatchCountMap();
+    var indexed = list.asMap().entries.toList();
+    indexed.sort((a, b) {
+      var countA = watchCountMap["${site.id}_${a.value.roomId}"] ?? 0;
+      var countB = watchCountMap["${site.id}_${b.value.roomId}"] ?? 0;
+      if (countA != countB) {
+        return countB.compareTo(countA);
+      }
+      return a.key.compareTo(b.key);
+    });
+    list.assignAll(indexed.map((e) => e.value).toList());
   }
 
   @override

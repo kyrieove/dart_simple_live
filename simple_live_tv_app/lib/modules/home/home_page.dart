@@ -3,9 +3,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
-import 'package:remixicon/remixicon.dart';
 import 'package:simple_live_tv_app/app/app_focus_node.dart';
 import 'package:simple_live_tv_app/app/app_style.dart';
+import 'package:simple_live_tv_app/app/app_theme.dart';
 import 'package:simple_live_tv_app/app/sites.dart';
 import 'package:simple_live_tv_app/app/utils.dart';
 import 'package:simple_live_tv_app/models/db/history.dart';
@@ -16,7 +16,6 @@ import 'package:simple_live_tv_app/widgets/app_scaffold.dart';
 import 'package:simple_live_tv_app/widgets/button/highlight_button.dart';
 import 'package:simple_live_tv_app/widgets/button/highlight_list_tile.dart';
 import 'package:simple_live_tv_app/widgets/card/anchor_card.dart';
-import 'package:simple_live_tv_app/widgets/button/home_big_button.dart';
 import 'package:simple_live_tv_app/widgets/highlight_widget.dart';
 import 'package:simple_live_tv_app/widgets/net_image.dart';
 import 'package:simple_live_tv_app/widgets/status/app_empty_widget.dart';
@@ -30,275 +29,26 @@ class HomePage extends GetView<HomeController> {
       child: Column(
         children: [
           AppStyle.vGap32,
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              AppStyle.hGap48,
-              Text(
-                "Simple Live TV",
-                style: AppStyle.titleStyleWhite,
-              ),
-              AppStyle.hGap24,
-              const Spacer(),
-              Obx(
-                () => Text(
-                  controller.datetime.value,
-                  style: AppStyle.titleStyleWhite.copyWith(fontSize: 36.w),
-                ),
-              ),
-              AppStyle.hGap32,
-              HighlightButton(
-                focusNode: AppFocusNode(),
-                iconData: Icons.settings,
-                text: "设置",
-                onTap: () {
-                  controller.toSettings();
-                },
-              ),
-              AppStyle.hGap48,
-            ],
-          ),
+          _buildTopBar(),
+          AppStyle.vGap24,
           Expanded(
-            child: ListView(
-              padding: AppStyle.edgeInsetsV32,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: AppStyle.edgeInsetsH48,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                _buildNavRail(),
+                AppStyle.hGap32,
+                Expanded(
+                  child: ListView(
+                    padding: AppStyle.edgeInsetsV24,
                     children: [
-                      Expanded(
-                        child: HomeBigButton(
-                          autofocus: true,
-                          focusNode: AppFocusNode(),
-                          text: "热门直播",
-                          iconData: Remix.fire_line,
-                          onTap: controller.toHotLive,
-                        ),
-                      ),
-                      AppStyle.hGap48,
-                      Expanded(
-                        child: HomeBigButton(
-                          autofocus: true,
-                          focusNode: AppFocusNode(),
-                          text: "直播类目",
-                          iconData: Remix.apps_line,
-                          onTap: controller.toCategory,
-                        ),
-                      ),
-                      AppStyle.hGap48,
-                      Expanded(
-                        child: HomeBigButton(
-                          autofocus: true,
-                          focusNode: AppFocusNode(),
-                          text: "搜索直播",
-                          iconData: Remix.search_2_line,
-                          onTap: showSearchDialog,
-                        ),
-                      ),
-                      // AppStyle.hGap40,
-                      // Expanded(
-                      //   child: HomeBigButton(
-                      //     focusNode: AppFocusNode(),
-                      //     text: "我的关注",
-                      //     iconData: Icons.favorite_border,
-                      //     onTap: controller.toFollow,
-                      //   ),
-                      // ),
-                      AppStyle.hGap48,
-                      Expanded(
-                        child: HomeBigButton(
-                          focusNode: AppFocusNode(),
-                          text: "观看记录",
-                          iconData: Icons.history,
-                          onTap: controller.toHistory,
-                        ),
-                      ),
-                      AppStyle.hGap48,
-                      Expanded(
-                        child: HomeBigButton(
-                          focusNode: AppFocusNode(),
-                          text: "数据同步",
-                          iconData: Icons.devices,
-                          onTap: controller.toSync,
-                        ),
-                      ),
+                      _buildHero(),
+                      AppStyle.vGap24,
+                      _buildRecent(),
+                      AppStyle.vGap24,
+                      _buildFollow(),
                     ],
                   ),
                 ),
-                AppStyle.vGap32,
-                // 最近观看
-                Obx(
-                  () => Visibility(
-                    visible: controller.recentHistory.isNotEmpty,
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: AppStyle.edgeInsetsH48,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 64.w,
-                                height: 64.w,
-                                child: Center(
-                                  child: Icon(
-                                    Icons.history,
-                                    color: Colors.white,
-                                    size: 56.w,
-                                  ),
-                                ),
-                              ),
-                              AppStyle.hGap24,
-                              Expanded(
-                                child: Text(
-                                  "最近观看",
-                                  style: AppStyle.titleStyleWhite,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        AppStyle.vGap24,
-                        SizedBox(
-                          height: 160.w,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: AppStyle.edgeInsetsH48,
-                            itemCount: controller.recentHistory.length,
-                            itemBuilder: (_, i) {
-                              return Padding(
-                                padding: EdgeInsets.only(right: 24.w),
-                                child: buildRecentCard(
-                                    controller.recentHistory[i]),
-                              );
-                            },
-                          ),
-                        ),
-                        AppStyle.vGap32,
-                      ],
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: AppStyle.edgeInsetsH48,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 64.w,
-                        height: 64.w,
-                        child: Center(
-                          child: Icon(
-                            Icons.favorite_border,
-                            color: Colors.white,
-                            size: 56.w,
-                          ),
-                        ),
-                      ),
-                      AppStyle.hGap24,
-                      Expanded(
-                        child: Text(
-                          "我的关注",
-                          style: AppStyle.titleStyleWhite,
-                        ),
-                      ),
-                      Obx(
-                        () => Visibility(
-                          visible: FollowUserService.instance.updating.value,
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 48.w,
-                                height: 48.w,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 4.w,
-                                ),
-                              ),
-                              AppStyle.hGap16,
-                              Text(
-                                "更新状态中...",
-                                style: AppStyle.textStyleWhite,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      AppStyle.hGap16,
-                      HighlightButton(
-                        focusNode: AppFocusNode(),
-                        iconData: Icons.settings,
-                        text: "管理",
-                        onTap: showManageDialog,
-                      ),
-                      AppStyle.hGap32,
-                      HighlightButton(
-                        focusNode: AppFocusNode(),
-                        iconData: Icons.refresh,
-                        text: "刷新",
-                        onTap: () {
-                          FollowUserService.instance.refreshData();
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                AppStyle.vGap32,
-                Obx(
-                  () => MasonryGridView.count(
-                    padding: AppStyle.edgeInsetsH48,
-                    itemCount: FollowUserService.instance.list.length,
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 48.w,
-                    mainAxisSpacing: 48.w,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemBuilder: (_, i) {
-                      var item = FollowUserService.instance.list[i];
-                      return Obx(
-                        () => AnchorCard(
-                          face: item.face,
-                          name: item.userName,
-                          siteId: item.siteId,
-                          liveStatus: item.liveStatus.value,
-                          roomId: item.roomId,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Obx(
-                  () => Visibility(
-                    visible: FollowUserService.instance.list.isEmpty,
-                    child: Column(
-                      children: [
-                        AppStyle.vGap24,
-                        LottieBuilder.asset(
-                          'assets/lotties/empty.json',
-                          width: 160.w,
-                          height: 160.w,
-                          repeat: false,
-                        ),
-                        AppStyle.vGap24,
-                        Text(
-                          "暂无任何关注\n您可以从其他端同步数据到此处",
-                          textAlign: TextAlign.center,
-                          style: AppStyle.textStyleWhite,
-                        ),
-                        AppStyle.vGap16,
-                        HighlightButton(
-                          focusNode: AppFocusNode(),
-                          iconData: Icons.devices,
-                          text: "同步数据",
-                          onTap: () {
-                            controller.toSync();
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                )
               ],
             ),
           ),
@@ -307,71 +57,364 @@ class HomePage extends GetView<HomeController> {
     );
   }
 
-  /// 最近观看的直播间卡片
-  Widget buildRecentCard(History item) {
+  /// 顶部标题栏
+  Widget _buildTopBar() {
+    return Padding(
+      padding: AppStyle.edgeInsetsH48,
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: AppStyle.radius12,
+            child: Image.asset(
+              "assets/images/app_logo.png",
+              width: 52.w,
+              height: 52.w,
+              fit: BoxFit.contain,
+            ),
+          ),
+          AppStyle.hGap16,
+          Text("Simple Live TV", style: AppStyle.titleStyleWhite),
+          const Spacer(),
+          Obx(
+            () => Text(
+              controller.datetime.value,
+              style: AppStyle.subTextStyleWhite.copyWith(fontSize: 28.w),
+            ),
+          ),
+          AppStyle.hGap24,
+          HighlightButton(
+            focusNode: AppFocusNode(),
+            iconData: Icons.settings,
+            text: "设置",
+            onTap: () {
+              controller.toSettings();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 左侧导航
+  Widget _buildNavRail() {
+    var items = [
+      ("热门直播", Icons.local_fire_department_rounded, controller.toHotLive),
+      ("直播类目", Icons.grid_view_rounded, controller.toCategory),
+      ("搜索直播", Icons.search_rounded, () => showSearchDialog()),
+      ("观看记录", Icons.history_rounded, controller.toHistory),
+      ("数据同步", Icons.devices_rounded, controller.toSync),
+    ];
+
+    return SizedBox(
+      width: 300.w,
+      child: ListView.separated(
+        // 左边跟内容区对齐, 右边只留一点间距
+        padding: EdgeInsets.only(left: 48.w, right: 8.w),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => AppStyle.vGap12,
+        itemBuilder: (_, i) {
+          var item = items[i];
+          var focusNode = controller.navFocusNodes[i];
+          return HighlightWidget(
+            focusNode: focusNode,
+            borderRadius: AppStyle.radius12,
+            color: Colors.white.withAlpha(14),
+            onTap: item.$3,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 20.w),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Obx(
+                    () => Icon(
+                      item.$2,
+                      color: focusNode.isFoucsed.value
+                          ? Colors.black
+                          : Colors.white,
+                      size: 30.w,
+                    ),
+                  ),
+                  AppStyle.hGap16,
+                  _label(focusNode, item.$1),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// 英雄卡: 接着看刚才看的
+  Widget _buildHero() {
+    return Obx(() {
+      var history = controller.recentHistory;
+      if (history.isEmpty) {
+        return const SizedBox.shrink();
+      }
+      var item = history.first;
+      var site = Sites.allSites[item.siteId];
+      if (site == null) {
+        return const SizedBox.shrink();
+      }
+      var focusNode = AppFocusNode();
+      return HighlightWidget(
+        focusNode: focusNode,
+        borderRadius: AppStyle.radius16,
+        color: Colors.white.withAlpha(14),
+        onTap: () {
+          AppNavigator.toLiveRoomDetail(site: site, roomId: item.roomId);
+        },
+        child: SizedBox(
+          height: 300.w,
+          child: Row(
+            children: [
+              Expanded(
+                flex: 5,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(16),
+                  ),
+                  child: (item.cover ?? "").isEmpty
+                      ? Container(color: const Color(0xFF22314C))
+                      : NetImage(
+                          item.cover ?? "",
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                ),
+              ),
+              Expanded(
+                flex: 6,
+                child: Padding(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 36.w, vertical: 28.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12.w, vertical: 5.w),
+                            decoration: BoxDecoration(
+                              color: AppTheme.liveBadge,
+                              borderRadius: AppStyle.radius8,
+                            ),
+                            child: Text(
+                              "直播中",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20.w,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          AppStyle.hGap16,
+                          Image.asset(site.logo, width: 30.w),
+                          AppStyle.hGap8,
+                          _label(
+                            focusNode,
+                            site.name,
+                            style: AppStyle.subTextStyleWhite,
+                            focusedStyle: AppStyle.subTextStyleBlack,
+                          ),
+                        ],
+                      ),
+                      AppStyle.vGap16,
+                      _label(
+                        focusNode,
+                        item.userName,
+                        style: AppStyle.titleStyleWhite,
+                      ),
+                      AppStyle.vGap24,
+                      _label(
+                        focusNode,
+                        "继续观看",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 26.w,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  /// 最近观看
+  Widget _buildRecent() {
+    return Obx(() {
+      var list = controller.recentHistory;
+      if (list.length <= 1) {
+        return const SizedBox.shrink();
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle(Icons.history_rounded, "最近观看"),
+          AppStyle.vGap16,
+          SizedBox(
+            height: 120.w,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: list.length - 1,
+              itemBuilder: (_, i) {
+                return Padding(
+                  padding: EdgeInsets.only(right: 16.w),
+                  child: _buildRecentCard(list[i + 1]),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    });
+  }
+
+  Widget _buildRecentCard(History item) {
     var site = Sites.allSites[item.siteId];
     if (site == null) {
       return const SizedBox.shrink();
     }
     var focusNode = AppFocusNode();
-    return SizedBox(
-      width: 360.w,
-      child: Obx(
-        () => HighlightWidget(
-          focusNode: focusNode,
-          color: Colors.white10,
-          borderRadius: AppStyle.radius16,
-          onTap: () {
-            AppNavigator.toLiveRoomDetail(site: site, roomId: item.roomId);
-          },
-          child: Padding(
-            padding: AppStyle.edgeInsetsA20,
-            child: Row(
+    return HighlightWidget(
+      focusNode: focusNode,
+      borderRadius: AppStyle.radius12,
+      color: Colors.white.withAlpha(14),
+      onTap: () {
+        AppNavigator.toLiveRoomDetail(site: site, roomId: item.roomId);
+      },
+      child: Padding(
+        padding: AppStyle.edgeInsetsA16,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            NetImage(
+              item.face,
+              width: 72.w,
+              height: 72.w,
+              borderRadius: 72.w,
+              cacheWidth: 100,
+            ),
+            AppStyle.hGap16,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                NetImage(
-                  item.face,
-                  width: 96.w,
-                  height: 96.w,
-                  borderRadius: 96.w,
-                  cacheWidth: 100,
-                ),
-                AppStyle.hGap16,
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        item.userName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: focusNode.isFoucsed.value
-                            ? AppStyle.textStyleBlack
-                            : AppStyle.textStyleWhite,
-                      ),
-                      AppStyle.vGap8,
-                      Row(
-                        children: [
-                          Image.asset(
-                            site.logo,
-                            width: 28.w,
-                          ),
-                          AppStyle.hGap8,
-                          Text(
-                            site.name,
-                            style: focusNode.isFoucsed.value
-                                ? AppStyle.subTextStyleBlack
-                                : AppStyle.subTextStyleWhite,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                _label(focusNode, item.userName),
+                _label(
+                  focusNode,
+                  site.name,
+                  style: AppStyle.subTextStyleWhite,
+                  focusedStyle: AppStyle.subTextStyleBlack,
                 ),
               ],
             ),
-          ),
+          ],
         ),
+      ),
+    );
+  }
+
+  /// 我的关注
+  Widget _buildFollow() {
+    return Obx(
+      () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle(Icons.favorite_border, "我的关注"),
+          AppStyle.vGap16,
+          if (FollowUserService.instance.list.isEmpty)
+            Padding(
+              padding: AppStyle.edgeInsetsV24,
+              child: Column(
+                children: [
+                  LottieBuilder.asset(
+                    'assets/lotties/empty.json',
+                    width: 160.w,
+                    height: 160.w,
+                    repeat: false,
+                  ),
+                  AppStyle.vGap24,
+                  Text(
+                    "暂无任何关注\n您可以从其他端同步数据到此处",
+                    textAlign: TextAlign.center,
+                    style: AppStyle.subTextStyleWhite,
+                  ),
+                  AppStyle.vGap16,
+                  HighlightButton(
+                    focusNode: AppFocusNode(),
+                    iconData: Icons.devices,
+                    text: "同步数据",
+                    onTap: () {
+                      controller.toSync();
+                    },
+                  ),
+                ],
+              ),
+            )
+          else
+            MasonryGridView.count(
+              padding: EdgeInsets.zero,
+              itemCount: FollowUserService.instance.list.length,
+              crossAxisCount: 2,
+              crossAxisSpacing: 16.w,
+              mainAxisSpacing: 16.w,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemBuilder: (_, i) {
+                var item = FollowUserService.instance.list[i];
+                return Obx(
+                  () => AnchorCard(
+                    face: item.face,
+                    name: item.userName,
+                    siteId: item.siteId,
+                    liveStatus: item.liveStatus.value,
+                    roomId: item.roomId,
+                    focusNode: item.focusNode,
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white70, size: 30.w),
+        AppStyle.hGap12,
+        Text(title, style: AppStyle.titleStyleWhite.copyWith(fontSize: 30.w)),
+      ],
+    );
+  }
+
+  /// 焦点态下卡片背景会变白, 文字跟着翻色, 否则白底白字看不见
+  Widget _label(
+    AppFocusNode focusNode,
+    String text, {
+    TextStyle? style,
+    TextStyle? focusedStyle,
+  }) {
+    return Obx(
+      () => Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: focusNode.isFoucsed.value
+            ? (focusedStyle ?? AppStyle.textStyleBlack)
+            : (style ?? AppStyle.textStyleWhite),
       ),
     );
   }
@@ -384,7 +427,6 @@ class HomePage extends GetView<HomeController> {
         children: [
           AppStyle.vGap24,
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               AppStyle.hGap48,
               HighlightButton(
@@ -498,8 +540,8 @@ class HomePage extends GetView<HomeController> {
                 Obx(
                   () => HighlightButton(
                     text: "主播",
-                    selected: mode.value == 1,
                     iconData: Icons.person,
+                    selected: mode.value == 1,
                     focusNode: anchorFocusNode,
                     autofocus: anchorFocusNode.isFoucsed.value,
                     onTap: () {
@@ -529,7 +571,7 @@ class HomePage extends GetView<HomeController> {
                 },
                 decoration: InputDecoration(
                   hintText: mode.value == 0 ? "点击输入关键字搜索" : "点击主播昵称搜索",
-                  hintStyle: AppStyle.textStyleWhite,
+                  hintStyle: AppStyle.subTextStyleWhite,
                   border: OutlineInputBorder(
                     borderRadius: AppStyle.radius16,
                     borderSide: BorderSide(width: 4.w),

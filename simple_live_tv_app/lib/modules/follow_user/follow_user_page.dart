@@ -71,6 +71,7 @@ class FollowUserPage extends StatelessWidget {
                     siteId: item.siteId,
                     liveStatus: item.liveStatus.value,
                     roomId: item.roomId,
+                    focusNode: item.focusNode,
                   );
                 },
               ),

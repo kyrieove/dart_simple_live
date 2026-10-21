@@ -111,6 +111,13 @@ class BasePageController<T> extends BaseController {
     return [];
   }
 
+  @override
+  void onClose() {
+    scrollController.dispose();
+    easyRefreshController.dispose();
+    super.onClose();
+  }
+
   void scrollToTopOrRefresh() {
     if (scrollController.offset > 0) {
       scrollController.animateTo(

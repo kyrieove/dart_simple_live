@@ -9,7 +9,7 @@ import 'package:logger/logger.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:simple_live_core/simple_live_core.dart';
-import 'package:simple_live_tv_app/app/app_style.dart';
+import 'package:simple_live_tv_app/app/app_theme.dart';
 import 'package:simple_live_tv_app/app/controller/app_settings_controller.dart';
 import 'package:simple_live_tv_app/app/log.dart';
 import 'package:simple_live_tv_app/app/utils.dart';
@@ -94,31 +94,36 @@ class MyApp extends StatelessWidget {
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        return GetMaterialApp(
-          title: 'Simple Live TV',
-          theme: AppStyle.lightTheme,
-          initialRoute: AppSettingsController.instance.firstRun
-              ? RoutePath.kAgreement
-              : RoutePath.kHome,
-          getPages: AppPages.routes,
-          debugShowCheckedModeBanner: false,
-          builder: FlutterSmartDialog.init(
-            loadingBuilder: (msg) => Center(
-              child: SizedBox(
-                width: 64.w,
-                height: 64.w,
-                child: CircularProgressIndicator(
-                  strokeWidth: 8.w,
-                  color: Colors.white,
+        // 主题色可以在设置里改, 这里跟着变
+        return Obx(
+          () => GetMaterialApp(
+            title: 'Simple Live TV',
+            theme: AppTheme.build(
+              Color(AppSettingsController.instance.styleColor.value),
+            ),
+            initialRoute: AppSettingsController.instance.firstRun
+                ? RoutePath.kAgreement
+                : RoutePath.kHome,
+            getPages: AppPages.routes,
+            debugShowCheckedModeBanner: false,
+            builder: FlutterSmartDialog.init(
+              loadingBuilder: (msg) => Center(
+                child: SizedBox(
+                  width: 64.w,
+                  height: 64.w,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 8.w,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-            ),
-            //字体大小不跟随系统变化
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: const TextScaler.linear(1.0),
+              //字体大小不跟随系统变化
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: const TextScaler.linear(1.0),
+                ),
+                child: child!,
               ),
-              child: child!,
             ),
           ),
         );

@@ -51,7 +51,7 @@ class DBService extends GetxService {
   Map<String, int> getWatchCountMap() {
     var map = <String, int>{};
     for (var item in historyBox.values) {
-      map[item.id] = item.watchCount;
+      map[item.id] = item.watchCount ?? 0;
     }
     return map;
   }
@@ -60,7 +60,7 @@ class DBService extends GetxService {
   Map<String, int> getSiteWatchDurationMap() {
     var map = <String, int>{};
     for (var item in historyBox.values) {
-      map[item.siteId] = (map[item.siteId] ?? 0) + item.watchDuration;
+      map[item.siteId] = (map[item.siteId] ?? 0) + (item.watchDuration ?? 0);
     }
     return map;
   }
@@ -71,7 +71,7 @@ class DBService extends GetxService {
     if (history == null) {
       return;
     }
-    history.watchCount += 1;
+    history.watchCount = (history.watchCount ?? 0) + 1;
     await historyBox.put(history.id, history);
   }
 
@@ -84,7 +84,7 @@ class DBService extends GetxService {
     if (history == null) {
       return;
     }
-    history.watchDuration += duration;
+    history.watchDuration = (history.watchDuration ?? 0) + duration;
     await historyBox.put(history.id, history);
   }
 }

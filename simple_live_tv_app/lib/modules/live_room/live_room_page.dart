@@ -66,7 +66,7 @@ class LiveRoomPage extends GetView<LiveRoomController> {
         key.logicalKey == LogicalKeyboardKey.enter ||
         key.logicalKey == LogicalKeyboardKey.space) {
       // 播放失败时优先重试
-      if (controller.errorMsg.value.isNotEmpty) {
+      if (controller.phase.value == PlaybackPhase.failed) {
         controller.retryPlay();
         return;
       }
@@ -162,26 +162,33 @@ class LiveRoomPage extends GetView<LiveRoomController> {
         // 正在自动恢复播放
         Obx(
           () => Visibility(
-            visible: controller.reconnecting.value &&
-                controller.errorMsg.value.isEmpty,
+            visible: controller.phase.value == PlaybackPhase.recovering,
             child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 64.w,
-                    height: 64.w,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 8.w,
-                      color: Colors.white,
+              child: Container(
+                padding: AppStyle.edgeInsetsA40,
+                decoration: BoxDecoration(
+                  color: Colors.black.withAlpha(170),
+                  borderRadius: AppStyle.radius16,
+                  border: Border.all(color: Colors.white12, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 56.w,
+                      height: 56.w,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 6.w,
+                        color: Theme.of(Get.context!).colorScheme.primary,
+                      ),
                     ),
-                  ),
-                  AppStyle.vGap24,
-                  Text(
-                    "正在恢复播放...",
-                    style: AppStyle.textStyleWhite,
-                  ),
-                ],
+                    AppStyle.hGap24,
+                    Text(
+                      "正在恢复播放...",
+                      style: AppStyle.textStyleWhite,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -189,24 +196,41 @@ class LiveRoomPage extends GetView<LiveRoomController> {
         // 播放失败提示
         Obx(
           () => Visibility(
-            visible: controller.errorMsg.value.isNotEmpty,
+            visible: controller.phase.value == PlaybackPhase.failed,
             child: Container(
-              color: Colors.black54,
+              color: Colors.black.withAlpha(160),
               child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      controller.errorMsg.value,
-                      textAlign: TextAlign.center,
-                      style: AppStyle.textStyleWhite,
-                    ),
-                    AppStyle.vGap24,
-                    Text(
-                      "按 OK 键重试",
-                      style: AppStyle.textStyleWhite.copyWith(fontSize: 28.w),
-                    ),
-                  ],
+                child: Container(
+                  width: 760.w,
+                  padding: AppStyle.edgeInsetsA40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A2436),
+                    borderRadius: AppStyle.radius16,
+                    border: Border.all(color: Colors.white12, width: 1),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 64.w,
+                        color: const Color(0xFFFF8A80),
+                      ),
+                      AppStyle.vGap24,
+                      Text(
+                        controller.failReason.value.isEmpty
+                            ? "播放失败"
+                            : controller.failReason.value,
+                        textAlign: TextAlign.center,
+                        style: AppStyle.textStyleWhite,
+                      ),
+                      AppStyle.vGap16,
+                      Text(
+                        "按 OK 键重试",
+                        style: AppStyle.subTextStyleWhite,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

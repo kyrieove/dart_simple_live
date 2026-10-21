@@ -23,15 +23,16 @@ class HistoryAdapter extends TypeAdapter<History> {
       userName: fields[3] as String,
       face: fields[4] as String,
       updateTime: fields[5] as DateTime,
-      watchCount: fields[6] as int? ?? 0,
-      watchDuration: fields[7] as int? ?? 0,
+      watchCount: fields[6] as int?,
+      watchDuration: fields[7] as int?,
+      cover: fields[8] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, History obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -47,7 +48,9 @@ class HistoryAdapter extends TypeAdapter<History> {
       ..writeByte(6)
       ..write(obj.watchCount)
       ..writeByte(7)
-      ..write(obj.watchDuration);
+      ..write(obj.watchDuration)
+      ..writeByte(8)
+      ..write(obj.cover);
   }
 
   @override
