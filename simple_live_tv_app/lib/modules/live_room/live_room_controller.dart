@@ -220,6 +220,11 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     try {
       SmartDialog.showLoading(msg: "");
       pageLoadding.value = true;
+      // 换房间时把解码方式恢复成默认设置
+      if (_useSoftwareDecode) {
+        _useSoftwareDecode = false;
+        await resetDecodeMode();
+      }
       detail.value = await site.liveSite.getRoomDetail(roomId: roomId);
 
       addHistory();

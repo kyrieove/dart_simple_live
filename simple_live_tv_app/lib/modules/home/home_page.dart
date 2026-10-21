@@ -309,7 +309,10 @@ class HomePage extends GetView<HomeController> {
 
   /// 最近观看的直播间卡片
   Widget buildRecentCard(History item) {
-    var site = Sites.allSites[item.siteId]!;
+    var site = Sites.allSites[item.siteId];
+    if (site == null) {
+      return const SizedBox.shrink();
+    }
     var focusNode = AppFocusNode();
     return SizedBox(
       width: 360.w,

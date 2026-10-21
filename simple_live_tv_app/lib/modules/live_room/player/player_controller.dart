@@ -51,16 +51,32 @@ mixin PlayerMixin {
   /// 部分投影仪 / 电视盒子的硬解能力有限，遇到 HEVC 等编码时会出现
   /// 「有声音没画面」的情况，这时可以退回软解试试。
   Future<void> setSoftwareDecode() async {
+    await setDecodeMode('no');
+    Log.d("已关闭硬件解码，切换为软件解码");
+  }
+
+  /// 设置解码方式
+  Future<void> setDecodeMode(String hwdec) async {
     if (!Platform.isAndroid) {
       return;
     }
     try {
       var pp = player.platform as NativePlayer;
-      await pp.setProperty('hwdec', 'no');
-      Log.d("已关闭硬件解码，切换为软件解码");
+      await pp.setProperty('hwdec', hwdec);
     } catch (e) {
       Log.logPrint(e);
     }
+  }
+
+  /// 恢复成设置里配置的解码方式
+  Future<void> resetDecodeMode() async {
+    var hwdec = 'auto-safe';
+    if (AppSettingsController.instance.playerCompatMode.value) {
+      hwdec = 'mediacodec';
+    } else if (!AppSettingsController.instance.hardwareDecode.value) {
+      hwdec = 'no';
+    }
+    await setDecodeMode(hwdec);
   }
 
   /// 视频控制器
