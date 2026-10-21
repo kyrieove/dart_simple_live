@@ -100,6 +100,9 @@ class AppSettingsController extends GetxController {
     updateFollowThreadCount.value = LocalStorageService.instance
         .getValue(LocalStorageService.kUpdateFollowThreadCount, 4);
 
+    sortByWatchHabit.value = LocalStorageService.instance
+        .getValue(LocalStorageService.kSortByWatchHabit, true);
+
     super.onInit();
   }
 
@@ -333,5 +336,13 @@ class AppSettingsController extends GetxController {
     updateFollowThreadCount.value = e;
     LocalStorageService.instance
         .setValue(LocalStorageService.kUpdateFollowThreadCount, e);
+  }
+
+  /// 是否按观看习惯排序（关注列表、热门直播平台顺序）
+  var sortByWatchHabit = true.obs;
+  void setSortByWatchHabit(bool e) {
+    sortByWatchHabit.value = e;
+    LocalStorageService.instance
+        .setValue(LocalStorageService.kSortByWatchHabit, e);
   }
 }

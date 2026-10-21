@@ -11,6 +11,8 @@ class History {
     required this.userName,
     required this.face,
     required this.updateTime,
+    this.watchCount = 0,
+    this.watchDuration = 0,
   });
 
   ///id=siteId_roomId
@@ -32,6 +34,14 @@ class History {
   @HiveField(5)
   DateTime updateTime;
 
+  /// 观看次数
+  @HiveField(6)
+  int watchCount;
+
+  /// 累计观看时长（毫秒）
+  @HiveField(7)
+  int watchDuration;
+
   factory History.fromJson(Map<String, dynamic> json) => History(
         id: json["id"],
         roomId: json["roomId"],
@@ -39,6 +49,8 @@ class History {
         userName: json["userName"],
         face: json["face"],
         updateTime: DateTime.parse(json["updateTime"]),
+        watchCount: json["watchCount"] ?? 0,
+        watchDuration: json["watchDuration"] ?? 0,
       );
 
   Map<String, dynamic> toJson() => {
@@ -48,5 +60,7 @@ class History {
         "userName": userName,
         "face": face,
         "updateTime": updateTime.toString(),
+        "watchCount": watchCount,
+        "watchDuration": watchDuration,
       };
 }

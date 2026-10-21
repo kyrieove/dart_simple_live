@@ -46,4 +46,45 @@ class DBService extends GetxService {
     his.sort((a, b) => b.updateTime.compareTo(a.updateTime));
     return his;
   }
+
+  /// 每个直播间的观看次数
+  Map<String, int> getWatchCountMap() {
+    var map = <String, int>{};
+    for (var item in historyBox.values) {
+      map[item.id] = item.watchCount;
+    }
+    return map;
+  }
+
+  /// 每个平台的累计观看时长（毫秒）
+  Map<String, int> getSiteWatchDurationMap() {
+    var map = <String, int>{};
+    for (var item in historyBox.values) {
+      map[item.siteId] = (map[item.siteId] ?? 0) + item.watchDuration;
+    }
+    return map;
+  }
+
+  /// 增加观看次数
+  Future<void> increaseWatchCount(String id) async {
+    var history = getHistory(id);
+    if (history == null) {
+      return;
+    }
+    history.watchCount += 1;
+    await historyBox.put(history.id, history);
+  }
+
+  /// 累加观看时长
+  Future<void> addWatchDuration(String id, int duration) async {
+    if (duration <= 0) {
+      return;
+    }
+    var history = getHistory(id);
+    if (history == null) {
+      return;
+    }
+    history.watchDuration += duration;
+    await historyBox.put(history.id, history);
+  }
 }

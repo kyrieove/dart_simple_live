@@ -18,9 +18,11 @@ jobs:
             contents: write
         steps:
             #签出代码
+            # 注意: 必须检出触发本次构建的 tag 本身,
+            # 之前写死 ref: dev 会导致推 tag 打的包其实是 dev 分支的内容。
             - uses: actions/checkout@v6
               with:
-                  ref: dev
+                  ref: ${{ github.ref }}
 
             #APK签名设置
             - name: Download Android keystore
@@ -73,7 +75,9 @@ jobs:
             - name: Validate Android toolchain
               run: |
                   cd simple_live_tv_app
-                  flutter analyze --suggestions
+                  # 注意: 不能加 --suggestions, 那个模式会隐藏 error
+                  # 只把 lint 警告当作非致命问题, 编译错误仍然会中断构建
+                  flutter analyze --no-fatal-infos --no-fatal-warnings
 
             #打包APK
             - name: Build APK

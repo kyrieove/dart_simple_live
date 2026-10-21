@@ -68,8 +68,30 @@ class FollowUserService extends BasePageController<FollowUser> {
     return followList;
   }
 
+  /// 排序
+  ///
+  /// 1. 正在直播的排在最前面
+  /// 2. 其次按观看习惯排序：看得越多的主播排得越靠前
+  /// 3. 最后按关注时间排序
   void sortList() {
-    list.sort((a, b) => b.liveStatus.value.compareTo(a.liveStatus.value));
+    var sortByHabit = AppSettingsController.instance.sortByWatchHabit.value;
+    var watchCountMap =
+        sortByHabit ? DBService.instance.getWatchCountMap() : <String, int>{};
+
+    list.sort((a, b) {
+      var liveCompare = b.liveStatus.value.compareTo(a.liveStatus.value);
+      if (liveCompare != 0) {
+        return liveCompare;
+      }
+      if (sortByHabit) {
+        var countCompare =
+            (watchCountMap[b.id] ?? 0).compareTo(watchCountMap[a.id] ?? 0);
+        if (countCompare != 0) {
+          return countCompare;
+        }
+      }
+      return b.addTime.compareTo(a.addTime);
+    });
     updateLivingList();
   }
 

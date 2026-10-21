@@ -4,7 +4,6 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get/get.dart';
 import 'package:simple_live_tv_app/app/app_focus_node.dart';
 import 'package:simple_live_tv_app/app/app_style.dart';
-import 'package:simple_live_tv_app/app/sites.dart';
 import 'package:simple_live_tv_app/modules/hot_live/hot_live_controller.dart';
 import 'package:simple_live_tv_app/routes/app_navigation.dart';
 import 'package:simple_live_tv_app/widgets/app_scaffold.dart';
@@ -72,7 +71,7 @@ class HotLivePage extends GetView<HotliveController> {
           Wrap(
             alignment: WrapAlignment.center,
             spacing: 36.w,
-            children: Sites.supportSites
+            children: controller.orderedSites
                 .map(
                   (e) => Obx(
                     () => HighlightButton(

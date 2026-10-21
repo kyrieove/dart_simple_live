@@ -6,14 +6,18 @@ import 'package:lottie/lottie.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:simple_live_tv_app/app/app_focus_node.dart';
 import 'package:simple_live_tv_app/app/app_style.dart';
+import 'package:simple_live_tv_app/app/sites.dart';
 import 'package:simple_live_tv_app/app/utils.dart';
+import 'package:simple_live_tv_app/models/db/history.dart';
 import 'package:simple_live_tv_app/modules/home/home_controller.dart';
+import 'package:simple_live_tv_app/routes/app_navigation.dart';
 import 'package:simple_live_tv_app/services/follow_user_service.dart';
 import 'package:simple_live_tv_app/widgets/app_scaffold.dart';
 import 'package:simple_live_tv_app/widgets/button/highlight_button.dart';
 import 'package:simple_live_tv_app/widgets/button/highlight_list_tile.dart';
 import 'package:simple_live_tv_app/widgets/card/anchor_card.dart';
 import 'package:simple_live_tv_app/widgets/button/home_big_button.dart';
+import 'package:simple_live_tv_app/widgets/highlight_widget.dart';
 import 'package:simple_live_tv_app/widgets/net_image.dart';
 import 'package:simple_live_tv_app/widgets/status/app_empty_widget.dart';
 
@@ -123,6 +127,59 @@ class HomePage extends GetView<HomeController> {
                   ),
                 ),
                 AppStyle.vGap32,
+                // 最近观看
+                Obx(
+                  () => Visibility(
+                    visible: controller.recentHistory.isNotEmpty,
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: AppStyle.edgeInsetsH48,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 64.w,
+                                height: 64.w,
+                                child: Center(
+                                  child: Icon(
+                                    Icons.history,
+                                    color: Colors.white,
+                                    size: 56.w,
+                                  ),
+                                ),
+                              ),
+                              AppStyle.hGap24,
+                              Expanded(
+                                child: Text(
+                                  "最近观看",
+                                  style: AppStyle.titleStyleWhite,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        AppStyle.vGap24,
+                        SizedBox(
+                          height: 160.w,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: AppStyle.edgeInsetsH48,
+                            itemCount: controller.recentHistory.length,
+                            itemBuilder: (_, i) {
+                              return Padding(
+                                padding: EdgeInsets.only(right: 24.w),
+                                child: buildRecentCard(
+                                    controller.recentHistory[i]),
+                              );
+                            },
+                          ),
+                        ),
+                        AppStyle.vGap32,
+                      ],
+                    ),
+                  ),
+                ),
                 Padding(
                   padding: AppStyle.edgeInsetsH48,
                   child: Row(
@@ -246,6 +303,72 @@ class HomePage extends GetView<HomeController> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 最近观看的直播间卡片
+  Widget buildRecentCard(History item) {
+    var site = Sites.allSites[item.siteId]!;
+    var focusNode = AppFocusNode();
+    return SizedBox(
+      width: 360.w,
+      child: Obx(
+        () => HighlightWidget(
+          focusNode: focusNode,
+          color: Colors.white10,
+          borderRadius: AppStyle.radius16,
+          onTap: () {
+            AppNavigator.toLiveRoomDetail(site: site, roomId: item.roomId);
+          },
+          child: Padding(
+            padding: AppStyle.edgeInsetsA20,
+            child: Row(
+              children: [
+                NetImage(
+                  item.face,
+                  width: 96.w,
+                  height: 96.w,
+                  borderRadius: 96.w,
+                  cacheWidth: 100,
+                ),
+                AppStyle.hGap16,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        item.userName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: focusNode.isFoucsed.value
+                            ? AppStyle.textStyleBlack
+                            : AppStyle.textStyleWhite,
+                      ),
+                      AppStyle.vGap8,
+                      Row(
+                        children: [
+                          Image.asset(
+                            site.logo,
+                            width: 28.w,
+                          ),
+                          AppStyle.hGap8,
+                          Text(
+                            site.name,
+                            style: focusNode.isFoucsed.value
+                                ? AppStyle.subTextStyleBlack
+                                : AppStyle.subTextStyleWhite,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

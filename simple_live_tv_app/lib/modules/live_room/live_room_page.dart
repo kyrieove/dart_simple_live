@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -64,6 +65,11 @@ class LiveRoomPage extends GetView<LiveRoomController> {
     if (key.logicalKey == LogicalKeyboardKey.select ||
         key.logicalKey == LogicalKeyboardKey.enter ||
         key.logicalKey == LogicalKeyboardKey.space) {
+      // 播放失败时优先重试
+      if (controller.errorMsg.value.isNotEmpty) {
+        controller.retryPlay();
+        return;
+      }
       if (!controller.showControlsState.value) {
         controller.showControls();
       } else {
@@ -149,6 +155,59 @@ class LiveRoomPage extends GetView<LiveRoomController> {
               child: Text(
                 "未开播",
                 style: AppStyle.textStyleWhite,
+              ),
+            ),
+          ),
+        ),
+        // 正在自动恢复播放
+        Obx(
+          () => Visibility(
+            visible: controller.reconnecting.value &&
+                controller.errorMsg.value.isEmpty,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 64.w,
+                    height: 64.w,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 8.w,
+                      color: Colors.white,
+                    ),
+                  ),
+                  AppStyle.vGap24,
+                  Text(
+                    "正在恢复播放...",
+                    style: AppStyle.textStyleWhite,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // 播放失败提示
+        Obx(
+          () => Visibility(
+            visible: controller.errorMsg.value.isNotEmpty,
+            child: Container(
+              color: Colors.black54,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      controller.errorMsg.value,
+                      textAlign: TextAlign.center,
+                      style: AppStyle.textStyleWhite,
+                    ),
+                    AppStyle.vGap24,
+                    Text(
+                      "按 OK 键重试",
+                      style: AppStyle.textStyleWhite.copyWith(fontSize: 28.w),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

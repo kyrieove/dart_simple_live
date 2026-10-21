@@ -216,6 +216,24 @@ class SettingsPage extends GetView<SettingsController> {
       children: [
         Obx(
           () => SettingsItemWidget(
+            foucsNode: controller.sortByWatchHabitFocusNode,
+            autofocus: controller.sortByWatchHabitFocusNode.isFoucsed.value,
+            title: "按观看习惯排序",
+            items: const {
+              0: "关",
+              1: "开",
+            },
+            value:
+                AppSettingsController.instance.sortByWatchHabit.value ? 1 : 0,
+            onChanged: (e) {
+              AppSettingsController.instance.setSortByWatchHabit(e == 1);
+              FollowUserService.instance.sortList();
+            },
+          ),
+        ),
+        AppStyle.vGap24,
+        Obx(
+          () => SettingsItemWidget(
             foucsNode: controller.autoUpdateFollowEnableFocusNode,
             autofocus:
                 controller.autoUpdateFollowEnableFocusNode.isFoucsed.value,

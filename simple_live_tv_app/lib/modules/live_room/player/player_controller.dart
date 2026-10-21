@@ -36,6 +36,33 @@ mixin PlayerMixin {
     }
   }
 
+  /// 是否已经解码出视频画面
+  ///
+  /// media_kit_video 在 Android 上只有在 width / height 都有效时才会渲染画面，
+  /// 否则就是一个「有声音没画面」的黑屏。这里统一判断，避免各处重复写。
+  bool get hasVideoTrack {
+    final w = player.state.width ?? 0;
+    final h = player.state.height ?? 0;
+    return w > 0 && h > 0;
+  }
+
+  /// 关闭硬件解码，改用软件解码
+  ///
+  /// 部分投影仪 / 电视盒子的硬解能力有限，遇到 HEVC 等编码时会出现
+  /// 「有声音没画面」的情况，这时可以退回软解试试。
+  Future<void> setSoftwareDecode() async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+    try {
+      var pp = player.platform as NativePlayer;
+      await pp.setProperty('hwdec', 'no');
+      Log.d("已关闭硬件解码，切换为软件解码");
+    } catch (e) {
+      Log.logPrint(e);
+    }
+  }
+
   /// 视频控制器
   late final videoController = VideoController(
     player,

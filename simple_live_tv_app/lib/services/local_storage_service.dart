@@ -17,6 +17,9 @@ class LocalStorageService extends GetxService {
   /// 首页排序
   static const String kHomeSort = "HomeSort";
 
+  /// 是否按观看习惯排序
+  static const String kSortByWatchHabit = "SortByWatchHabit";
+
   /// 显示模式
   /// * [0] 跟随系统
   /// * [1] 浅色模式
