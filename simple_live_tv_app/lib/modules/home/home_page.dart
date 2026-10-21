@@ -176,7 +176,13 @@ class HomePage extends GetView<HomeController> {
                     left: Radius.circular(16),
                   ),
                   child: (item.cover ?? "").isEmpty
-                      ? Container(color: const Color(0xFF22314C))
+                      // 老记录没有封面, 拿头像顶上, 免得英雄卡空一大块
+                      ? NetImage(
+                          item.face,
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                        )
                       : NetImage(
                           item.cover ?? "",
                           width: double.infinity,
