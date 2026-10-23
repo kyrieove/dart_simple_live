@@ -384,8 +384,7 @@ void showPlayerSettings(LiveRoomController controller) {
                   value: controller.currentQuality,
                   onChanged: (e) {
                     Get.back();
-                    controller.currentQuality = e;
-                    controller.getPlayUrl();
+                    controller.switchQuality(e);
                   },
                 ),
               ),
@@ -404,7 +403,7 @@ void showPlayerSettings(LiveRoomController controller) {
                   value: controller.currentLineIndex,
                   onChanged: (e) {
                     Get.back();
-                    controller.changePlayLine(e);
+                    controller.switchLine(e);
                   },
                 ),
               ),
@@ -632,6 +631,7 @@ void showFollowUser(LiveRoomController controller) {
                       siteId: item.siteId,
                       liveStatus: item.liveStatus.value,
                       roomId: item.roomId,
+                      focusNode: item.focusNode,
                       autofocus: i == currentIndex,
                       onTap: () {
                         controller.resetRoom(site, item.roomId);

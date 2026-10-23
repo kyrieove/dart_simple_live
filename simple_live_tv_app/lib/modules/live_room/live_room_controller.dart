@@ -89,6 +89,14 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   /// 失败原因, 只有 phase == failed 时有意义
   final failReason = "".obs;
 
+  /// 这次失败按 OK 键重试还有没有意义
+  ///
+  /// 有些失败重试也没用, 比如这个直播源本身就放不出画面。
+  /// 这时候还提示"按 OK 键重试"是在骗用户。
+  bool _canRetry = true;
+
+  bool get canRetry => _canRetry;
+
   // ---------------------------------------------------------------------------
   // 恢复流程: 单一入口 + 世代号
   //
@@ -120,9 +128,6 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   /// 开始检测画面的时间
   DateTime _videoCheckAt = DateTime.now();
 
-  /// 上一次检测到卡死的时间
-  DateTime _lastStallAt = DateTime.now();
-
   /// 播放器进入缓冲状态的时间
   DateTime _bufferingSince = DateTime.now();
 
@@ -141,13 +146,34 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   ///
   /// 断流重连的升级计数。刷新播放地址时**不能**重置它,
   /// 否则"一打开就 EOF"的流会永远重连下去, 停在"正在恢复播放"。
+  ///
+  /// 只在"这条流连续健康够一段时间"时才清零。解出视频轨不算健康:
+  /// 断掉的流一样有视频轨, 拿它当恢复成功的信号, 上限永远触发不了。
   int _failCount = 0;
+
+  /// 本次播放连续健康的起点
+  ///
+  /// 位置持续推进才叫健康。刚开始推进时记下时间,
+  /// 连续健康满 [_healthyWindow] 才把 [_failCount] 清零。
+  DateTime? _healthySince;
+
+  /// 判定为"真的好了"需要连续健康多久
+  static const Duration _healthyWindow = Duration(seconds: 10);
+
+  /// 上一次累计观看时长时的播放位置
+  Duration _lastWatchedPosition = Duration.zero;
 
   /// 是否已经退回软件解码
   bool _useSoftwareDecode = false;
 
   /// 是否正在销毁
   bool _isDisposing = false;
+
+  /// 是否正在换房间
+  ///
+  /// 换房间的时候看门狗要停一下: 旧房间的直链还在手上,
+  /// 看门狗一不留神就把刚退掉的房间又打开了。
+  bool _isSwitchingRoom = false;
 
   /// 本次观看的开始时间
   DateTime? _watchStartAt;
@@ -166,6 +192,9 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
 
   /// 卡死判定阈值: 播放位置多久没有推进就认为卡死
   static const Duration _stallTimeout = Duration(seconds: 20);
+
+  /// 连续恢复失败多少次就停下来, 交给用户按 OK 重试
+  static const int _maxRecoverCount = 3;
 
   /// 刚打开媒体后的宽限时间, 给解码器留出首帧时间
   static const Duration _openGrace = Duration(seconds: 25);
@@ -258,7 +287,7 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   }
 
   /// 加载直播间信息
-  void loadData() async {
+  Future<void> loadData() async {
     try {
       SmartDialog.showLoading(msg: "");
       pageLoadding.value = true;
@@ -304,6 +333,8 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   /// 开始一次恢复, 返回世代号
   int _startRecovery() {
     _recoveryEpoch++;
+    // 新的恢复流程从头算健康度
+    _healthySince = null;
     _setPhase(PlaybackPhase.recovering);
     return _recoveryEpoch;
   }
@@ -392,7 +423,7 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   ///
   /// 返回 false 表示没拿到可用地址。传入 [epoch] 时, 期间如果被更新的恢复
   /// 取代了, 这里直接放弃, 不会把旧地址写回去。
-  Future<bool> getPlayUrl({int? epoch}) async {
+  Future<bool> getPlayUrl({int? epoch, bool silent = false}) async {
     if (currentQuality < 0 || currentQuality >= qualites.length) {
       return false;
     }
@@ -403,7 +434,9 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
       return false;
     }
     if (playUrl.urls.isEmpty) {
-      SmartDialog.showToast("无法读取播放地址");
+      if (!silent) {
+        SmartDialog.showToast("无法读取播放地址");
+      }
       return false;
     }
     // 拿到新直链之前不动旧的, 避免中途把播放器架空
@@ -459,6 +492,34 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     }
 
     Log.d("播放链接\r\n：$url");
+  }
+
+  /// 手动切换清晰度
+  ///
+  /// 走一遍恢复流程, 免得手动切换和在飞的刷新流程互相覆盖:
+  /// 老流程会把用户选的清晰度又改回自己那份。
+  Future<void> switchQuality(int index) async {
+    if (index < 0 || index >= qualites.length) {
+      return;
+    }
+    final epoch = _startRecovery();
+    currentQuality = index;
+    var ok = await getPlayUrl(epoch: epoch);
+    if (!_isCurrentEpoch(epoch)) {
+      return;
+    }
+    if (!ok) {
+      _finishRecovery(epoch, reason: "无法读取播放地址");
+    }
+  }
+
+  /// 手动切换线路
+  Future<void> switchLine(int index) async {
+    if (index < 0 || index >= playUrls.length) {
+      return;
+    }
+    final epoch = _startRecovery();
+    await changePlayLine(index, epoch: epoch);
   }
 
   /// 重新拉取直播间信息与播放地址
@@ -530,7 +591,8 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
       if (!_isCurrentEpoch(epoch)) {
         return;
       }
-      _finishRecovery(epoch);
+      // 这里不判成 playing: 新直链刚交给播放器, 画面还没出来。
+      // 判了就只剩一片黑屏, 让看门狗在真的播起来的时候再切回正常。
     } catch (e) {
       Log.logPrint(e);
       if (_isCurrentEpoch(epoch)) {
@@ -543,6 +605,7 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   Future<void> retryPlay() async {
     _stallRetryCount = 0;
     _failCount = 0;
+    _canRetry = true;
     _videoCheckAt = DateTime.now();
     await refreshPlayUrl();
   }
@@ -552,10 +615,17 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     final epoch = _startRecovery();
     try {
       _failCount += 1;
-      if (_failCount > 3) {
+      if (_failCount > _maxRecoverCount) {
         // 一直连不上就别自己跟自己较劲, 让用户按 OK 重试。
         // 一打开就 EOF 的流如果没这个上限, 会永远重连下去。
-        _finishRecovery(epoch, reason: "播放连接已断开，请按 OK 键重试");
+        // 但先确认主播是不是下播了, 别把"下播"说成"连接断开"。
+        if (!await _isHostStillLive()) {
+          liveStatus.value = false;
+          _finishRecovery(epoch);
+          _setPhase(PlaybackPhase.idle);
+          return;
+        }
+        _finishRecovery(epoch, reason: "播放连接已断开");
         return;
       }
       if (_failCount <= 2) {
@@ -575,6 +645,21 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     }
   }
 
+  /// 主播是不是还在播
+  ///
+  /// 用来区分"流断了"和"主播下播了"。下播应该回到"未开播",
+  /// 而不是让用户按 OK 去重试一个永远不会成功的地址。
+  Future<bool> _isHostStillLive() async {
+    try {
+      var detail = await site.liveSite.getRoomDetail(roomId: roomId);
+      return detail.status || detail.isRecord;
+    } catch (e) {
+      Log.logPrint(e);
+      // 查不到就当还在播, 让用户自己决定要不要重试
+      return true;
+    }
+  }
+
   @override
   void mediaEnd() async {
     if (_isDisposing) {
@@ -584,7 +669,11 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     // 直播直链到期也会走到这里, 不能当成"主播下播"。
     // 先换线路, 都不行就拉一条新直链, 由房间信息决定是不是真的下播。
     if (currentLineIndex + 1 < playUrls.length) {
-      await changePlayLine(currentLineIndex + 1);
+      // 换线路也要走世代号, 不然在飞的恢复流程会把旧直链又打开一遍
+      final epoch = _startRecovery();
+      await changePlayLine(currentLineIndex + 1, epoch: epoch);
+      // 不在这里判成 playing: 新线路还没播起来, 判了就只剩一片黑屏,
+      // 让看门狗在真的播起来的时候再切回正常
       return;
     }
     await _recoverStream();
@@ -618,7 +707,10 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   /// 2. 播放卡死: 直播流断流时 mpv 会停在最后一帧并且不会触发 error /
   ///    completed 事件, 如果不主动检测就会一直卡住, 只能退出重进。
   void checkPlaybackHealth() {
-    if (_isDisposing || !liveStatus.value || isBackground) {
+    if (_isDisposing ||
+        !liveStatus.value ||
+        isBackground ||
+        _isSwitchingRoom) {
       return;
     }
     if (playUrls.isEmpty) {
@@ -628,6 +720,52 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     final now = DateTime.now();
     final state = player.state;
     final sinceOpen = now.difference(_mediaOpenedAt);
+    final isPlaying = state.playing && !state.buffering;
+
+    // 观看时长按播放器真正推进的毫秒算, 不按墙钟算。
+    // 放在宽限期前面, 否则每次打开媒体的头 25 秒都不计入,
+    // 恢复越频繁漏得越多。
+    if (isPlaying) {
+      final delta = state.position - _lastWatchedPosition;
+      // 一次看门狗只走一秒, 位移明显更大说明是拖动进度之类的跳变, 不计入
+      if (delta > Duration.zero && delta < const Duration(seconds: 5)) {
+        _watchedMs += delta.inMilliseconds;
+      }
+      _lastWatchedPosition = state.position;
+    }
+
+    // ----- 健康判定 -----
+    // 只有位置持续推进才叫健康。解出视频轨不算: 断掉的流一样有视频轨,
+    // 拿它当"恢复成功"的信号, 失败计数每次都会被清零, 上限形同虚设。
+    var positionAdvanced = false;
+    if (state.playing) {
+      if (state.position != _lastPosition) {
+        positionAdvanced = true;
+        _lastPosition = state.position;
+        _lastPositionAt = now;
+        _positionAdvanced = true;
+        _healthySince ??= now;
+        // 连续健康够一段时间才算真的好了, 位置动一下不算
+        if (now.difference(_healthySince!) >= _healthyWindow) {
+          _failCount = 0;
+          _stallRetryCount = 0;
+          _healthySince = now;
+        }
+      }
+    } else {
+      _lastPositionAt = now;
+      _lastPosition = state.position;
+      _healthySince = null;
+    }
+
+    // 界面从"正在恢复"切回正常, 只能凭"真的在播"。
+    // 之前拿"解出视频轨"当信号, 一打开就 EOF 的流也会被判成已恢复,
+    // 界面看着正常其实黑屏, 用户只能退出重进。
+    if (isPlaying &&
+        (phase.value == PlaybackPhase.recovering ||
+            phase.value == PlaybackPhase.connecting)) {
+      _setPhase(PlaybackPhase.playing);
+    }
 
     // 刚打开媒体时给一段宽限时间, 慢设备上首帧可能要十几秒
     if (sinceOpen < _openGrace) {
@@ -637,23 +775,10 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     // ----- 画面检测 -----
     if (hasVideoTrack) {
       _videoCheckAt = now;
-      // 画面出来了就说明恢复了, 不要再挂"正在恢复播放"
-      if (phase.value == PlaybackPhase.recovering ||
-          phase.value == PlaybackPhase.connecting) {
-        _setPhase(PlaybackPhase.playing);
-        _failCount = 0;
-      }
     } else if (now.difference(_videoCheckAt) > _noVideoTimeout) {
       _videoCheckAt = now;
       handleNoVideo();
       return;
-    }
-
-    // 正常在播才累计观看时长。
-    // 放在宽限期前面算, 否则每次打开媒体的头 25 秒都不计入,
-    // 恢复越频繁漏得越多。
-    if (state.playing && !state.buffering) {
-      _watchedMs += 1000;
     }
 
     // ----- 缓冲状态检测 -----
@@ -661,33 +786,11 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     // 也不会触发 completed 事件, 只能靠这里主动发现。
     if (state.buffering && !_buffering) {
       _bufferingSince = now;
-    } else if (!state.buffering && _buffering) {
-      // 缓冲结束, 说明已经恢复
-      _failCount = 0;
     }
     _buffering = state.buffering;
 
     // ----- 卡死检测 -----
-    if (!state.playing) {
-      _lastPositionAt = now;
-      _lastPosition = state.position;
-      return;
-    }
-
-    if (state.position != _lastPosition) {
-      // 播放位置还在推进, 说明是正常的
-      _lastPosition = state.position;
-      _lastPositionAt = now;
-      _positionAdvanced = true;
-      if (now.difference(_lastStallAt) > const Duration(seconds: 60)) {
-        _stallRetryCount = 0;
-      }
-      // 位置在推进, 说明重连成功了
-      _failCount = 0;
-      if (phase.value == PlaybackPhase.recovering ||
-          phase.value == PlaybackPhase.connecting) {
-        _setPhase(PlaybackPhase.playing);
-      }
+    if (!state.playing || positionAdvanced) {
       return;
     }
 
@@ -705,7 +808,6 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     }
 
     _lastPositionAt = now;
-    _lastStallAt = now;
     handleStall();
   }
 
@@ -731,6 +833,10 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   /// 处理「有声音没画面」
   ///
   /// 依次尝试: 降低清晰度 -> 切换线路 -> 关闭硬解 -> 明确报错
+  ///
+  /// 每一步之后**不**把阶段判成 playing。判成 playing 之后界面就不再提示,
+  /// 可这时画面还是黑的, 用户只看到一片黑屏, 只能退出重进。
+  /// 保持"正在恢复", 让看门狗在真的播起来的时候再切回正常。
   Future<void> handleNoVideo() async {
     if (_isDisposing) {
       return;
@@ -744,7 +850,7 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
         Log.d("无画面，切换清晰度到 ${qualites[currentQuality].quality}");
         SmartDialog.showToast(
             "没有画面，正在切换到${qualites[currentQuality].quality}画质");
-        var ok = await getPlayUrl(epoch: epoch);
+        var ok = await getPlayUrl(epoch: epoch, silent: true);
         if (!_isCurrentEpoch(epoch)) {
           return;
         }
@@ -752,7 +858,6 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
           _finishRecovery(epoch, reason: "无法读取播放地址");
           return;
         }
-        _finishRecovery(epoch);
         return;
       }
 
@@ -764,7 +869,6 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
         if (!_isCurrentEpoch(epoch)) {
           return;
         }
-        _finishRecovery(epoch);
         return;
       }
 
@@ -778,7 +882,6 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
         if (!_isCurrentEpoch(epoch)) {
           return;
         }
-        _finishRecovery(epoch);
         return;
       }
 
@@ -787,6 +890,8 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
         epoch,
         reason: "该直播源无法显示画面（可能是纯音频直播或设备不支持该编码）",
       );
+      // 这个源再怎么试都放不出画面, 别再让用户白按 OK
+      _canRetry = false;
     } catch (e) {
       Log.logPrint(e);
       _finishRecovery(epoch, reason: "画面恢复失败");
@@ -811,13 +916,19 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   }
 
   /// 保存本次观看的时长与次数
-  Future<void> saveWatchSession() async {
+  ///
+  /// [force] 为 true 时不足 5 秒也记, 换房间时用:
+  /// 不然那几秒会被下一段计时直接冲掉。
+  Future<void> saveWatchSession({bool force = false}) async {
     var id = _watchRoomId;
     if (id == null) {
       return;
     }
     var durationMs = _watchedMs;
-    if (durationMs < 5000) {
+    if (durationMs <= 0) {
+      return;
+    }
+    if (durationMs < 5000 && !force) {
       // 不够 5 秒就不记, 已经累计的时间先留着
       return;
     }
@@ -896,27 +1007,49 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
       return;
     }
 
-    // 先把上一个直播间的观看记录存下来
-    await saveWatchSession();
+    // 让在飞的恢复流程全部作废, 不然它会把上一个房间的数据写回来,
+    // 顶掉刚切过去的房间
+    _recoveryEpoch++;
+    // 换房间期间看门狗要停一下: 旧直链还在手上,
+    // 看门狗一不留神就把刚退掉的房间又打开了
+    _isSwitchingRoom = true;
 
-    rxSite.value = site;
-    rxRoomId.value = roomId;
-    // 立刻开始新房间的观看计时, 别把上一个房间的时间算到新房间头上
-    startWatchSession();
+    try {
+      // 先把上一个直播间的观看记录存下来, 不足 5 秒也存,
+      // 不然那几秒会被下一段计时直接冲掉
+      await saveWatchSession(force: true);
 
-    // 清除全部消息
-    liveDanmaku.stop();
+      rxSite.value = site;
+      rxRoomId.value = roomId;
+      // 立刻开始新房间的观看计时, 别把上一个房间的时间算到新房间头上
+      startWatchSession();
 
-    danmakuController?.clear();
+      // 清除全部消息
+      liveDanmaku.stop();
 
-    // 重新设置LiveDanmaku
-    liveDanmaku = site.liveSite.getDanmaku();
+      danmakuController?.clear();
 
-    // 停止播放
-    await player.stop();
+      // 重新设置LiveDanmaku
+      liveDanmaku = site.liveSite.getDanmaku();
 
-    // 刷新信息
-    loadData();
+      // 软解是上一个房间为了救画面临时降下来的, 换房间要恢复回去,
+      // 不然弱机上会一直软解, 卡顿反而更厉害
+      if (_useSoftwareDecode) {
+        _useSoftwareDecode = false;
+        await resetDecodeMode();
+      }
+
+      // 旧房间的直链不能留, 看门狗可能拿着它把旧房间又打开一遍
+      playUrls.clear();
+
+      // 停止播放
+      await player.stop();
+
+      // 刷新信息
+      await loadData();
+    } finally {
+      _isSwitchingRoom = false;
+    }
   }
 
   void nextChannel() {
@@ -997,6 +1130,8 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     FollowUserService.instance.initTimer();
     liveDanmaku.stop();
 
+    // 先把没画完的弹幕清掉再断开, 顺序反了这条弹幕就永远留在画布上
+    danmakuController?.clear();
     danmakuController = null;
     focusNode.dispose();
     WidgetsBinding.instance.removeObserver(this);

@@ -226,7 +226,10 @@ class LiveRoomPage extends GetView<LiveRoomController> {
                       ),
                       AppStyle.vGap16,
                       Text(
-                        "按 OK 键重试",
+                        controller.canRetry
+                            ? "按 OK 键重试"
+                            : "这个直播源放不出画面，换个直播间试试",
+                        textAlign: TextAlign.center,
                         style: AppStyle.subTextStyleWhite,
                       ),
                     ],
