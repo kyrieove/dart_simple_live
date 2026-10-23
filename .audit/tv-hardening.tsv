@@ -57,3 +57,7 @@ ts	phase	decision	why	evidence	result
 2026-10-23T21:40:00Z	verify	flutter analyze 0 issue; 模拟器 1920x1080 装新包逐屏截图核对, 两轮收敛	改了 20 多个文件, 编译不过一切白搭; UI 改动必须看图确认, 不能靠「我觉得对」	flutter analyze 输出 No issues found; .workbuddy-ai/shot4/*.png	通过
 2026-10-23T21:45:00Z	verify	投影仪这一轮没验上: 192.168.1.105 ping 不通, adb connect 超时	上一轮遗留的「真机没逐屏走一遍」还没消; DHCP 会漂, 连不上时先 ping 几个地址再试	Test-Connection 全部失败; adb connect 返回 10060	未验证, 需要连上投影仪再补
 2026-10-23T21:50:00Z	note	跨模型交叉审评这一轮仍然做不到, 5 个子代理和主会话跑的是同一个模型	poteto-mode 要求不同模型家族互审, 本机只有 minimax 一个模型目录可用, 只能靠分片并行审 + 模拟器截图 + 两轮自审收敛	会话列表里 effective_model 相同	降级为分片审 + 截图核对, 如实标注
+2026-10-23T22:05:00Z	ui	主页加一块热门直播预览网格, 5 列两行 10 个房间, 放在英雄卡下面	主页原来只有「继续观看」那一张卡, 没有关注也没有历史的时候整屏只剩一个房间, 看着像没内容; 网格左右各留 16 像素, 焦点卡片放大 6% 不留的话边缘会被切掉	home_page.dart / home_controller.dart / sites.dart; 提交 10d19f1; 投影仪截图 .workbuddy-ai/shot5/FINAL_grid3.png	已改, 投影仪上已验证
+2026-10-23T22:15:00Z	fix	投影仪装上了 1.6.9, 覆盖安装, 老数据全部保留	上一轮遗留的「真机没逐屏走一遍」这次补上了	adb install -r 成功; dumpsys package 显示 versionCode=11609 versionName=1.6.9; 主页英雄卡/最近观看/我的关注都是用户自己的真实数据, 截图 .workbuddy-ai/shot5/AFTER_home.png 与 AFTER_follow.png	已装已验
+2026-10-23T22:20:00Z	verify	投影仪真机直播能出画面, 1920x1080 硬解正常	这一轮改的播放恢复逻辑和 core 的直链/超时修复, 在真机上的效果得看真画面, 模拟器是 x86_64 验不了硬解路径	实机进入哔哩哔哩 KPL 房间和斗鱼 CS2 房间, 截图 .workbuddy-ai/shot5/FINAL_grid.png 与 FINAL_playing.png, 画面正常	通过
+2026-10-23T22:25:00Z	note	投影仪 IP 又漂了: 从 192.168.1.105 变成 192.168.1.104	HANDOFF 里写的 IP 不能直接信, 每次开机都要重新找	扫网段 5555 端口找到 192.168.1.104; adb devices 显示 OBE_C3Air / mt5862_bga_1g, Android 9, armeabi-v7a	已记录, 下次直接扫端口
