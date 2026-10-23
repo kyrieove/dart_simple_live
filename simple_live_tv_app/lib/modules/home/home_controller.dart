@@ -5,9 +5,13 @@ import 'package:get/get.dart';
 
 import 'package:simple_live_tv_app/app/app_focus_node.dart';
 import 'package:simple_live_tv_app/app/constant.dart';
+import 'package:simple_live_tv_app/app/controller/app_settings_controller.dart';
 import 'package:simple_live_tv_app/app/controller/base_controller.dart';
 import 'package:simple_live_tv_app/app/event_bus.dart';
+import 'package:simple_live_tv_app/app/log.dart';
+import 'package:simple_live_tv_app/app/sites.dart';
 import 'package:simple_live_tv_app/models/db/history.dart';
+import 'package:simple_live_tv_app/modules/hot_live/hot_live_controller.dart';
 import 'package:simple_live_tv_app/routes/route_path.dart';
 import 'package:simple_live_tv_app/services/db_service.dart';
 
@@ -16,6 +20,20 @@ class HomeController extends BaseController {
 
   /// 最近观看的直播间
   var recentHistory = <History>[].obs;
+
+  /// 主页预览的热门直播
+  ///
+  /// 主页原来只有"继续观看"那一张卡, 没有关注也没有历史的时候就只剩一个房间,
+  /// 看着像没内容。这里放一批热门直播, 主页一打开就有得看。
+  var hotRooms = <LiveRoomItemExt>[].obs;
+
+  /// 热门直播预览用的是哪个平台
+  ///
+  /// 跟着观看习惯走: 看得最多的平台排在最前面, 和热门直播页默认打开的那个一致。
+  final hotSite = Sites.supportSites.first.obs;
+
+  /// 主页上显示几个热门直播
+  static const int hotRoomCount = 10;
 
   StreamSubscription<dynamic>? _historySubscription;
 
@@ -67,6 +85,7 @@ class HomeController extends BaseController {
   void onInit() {
     initTimer();
     loadRecentHistory();
+    loadHotRooms();
     _historySubscription = EventBus.instance.listen(
       Constant.kUpdateHistory,
       (_) {
@@ -100,6 +119,45 @@ class HomeController extends BaseController {
   void loadRecentHistory() {
     var list = DBService.instance.getHistores();
     recentHistory.value = list.take(6).toList();
+  }
+
+  /// 拉一批热门直播给主页预览
+  ///
+  /// 拉不到就空着, 不弹提示: 主页预览是锦上添花, 失败不该打断用户。
+  Future<void> loadHotRooms() async {
+    try {
+      var site = _pickHotSite();
+      var result = await site.liveSite.getRecommendRooms(page: 1);
+      hotSite.value = site;
+      // 换一批数据的时候把上一批的焦点节点释放掉
+      for (var item in hotRooms) {
+        item.focusNode.dispose();
+      }
+      hotRooms.value = result.items
+          .take(hotRoomCount)
+          .map((e) => LiveRoomItemExt(
+                roomId: e.roomId,
+                title: e.title,
+                cover: e.cover,
+                userName: e.userName,
+                online: e.online,
+              ))
+          .toList();
+    } catch (e) {
+      Log.logPrint(e);
+      hotRooms.value = [];
+    }
+  }
+
+  /// 挑一个平台来显示热门直播
+  ///
+  /// 开着"按观看习惯排序"就看哪个平台看得最多, 没开就用第一个平台。
+  Site _pickHotSite() {
+    if (!AppSettingsController.instance.sortByWatchHabit.value) {
+      return Sites.supportSites.first;
+    }
+    var durationMap = DBService.instance.getSiteWatchDurationMap();
+    return Sites.orderedByWatchDuration(durationMap).first;
   }
 
   void toSync() {
@@ -138,6 +196,10 @@ class HomeController extends BaseController {
   void onClose() {
     _clockTimer?.cancel();
     _historySubscription?.cancel();
+    for (var item in hotRooms) {
+      item.focusNode.dispose();
+    }
+    hotRooms.clear();
     for (var node in _cardFocusNodes.values) {
       node.dispose();
     }

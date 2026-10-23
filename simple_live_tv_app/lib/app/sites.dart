@@ -36,6 +36,22 @@ class Sites {
   static List<Site> get supportSites {
     return allSites.values.toList();
   }
+
+  /// 按累计观看时长排好的平台列表
+  ///
+  /// 看得越久的平台排得越靠前, 看量相同时保持默认顺序。
+  /// 主页预览和热门直播页用的是同一套规则, 两边显示的平台才对得上。
+  static List<Site> orderedByWatchDuration(Map<String, int> durationMap) {
+    var sites = supportSites;
+    sites.sort((a, b) {
+      var compare = (durationMap[b.id] ?? 0).compareTo(durationMap[a.id] ?? 0);
+      if (compare != 0) {
+        return compare;
+      }
+      return a.index.compareTo(b.index);
+    });
+    return sites;
+  }
 }
 
 class Site {

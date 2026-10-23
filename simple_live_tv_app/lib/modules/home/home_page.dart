@@ -16,6 +16,7 @@ import 'package:simple_live_tv_app/widgets/app_scaffold.dart';
 import 'package:simple_live_tv_app/widgets/button/highlight_button.dart';
 import 'package:simple_live_tv_app/widgets/button/highlight_list_tile.dart';
 import 'package:simple_live_tv_app/widgets/card/anchor_card.dart';
+import 'package:simple_live_tv_app/widgets/card/live_room_card.dart';
 import 'package:simple_live_tv_app/widgets/highlight_widget.dart';
 import 'package:simple_live_tv_app/widgets/net_image.dart';
 import 'package:simple_live_tv_app/widgets/status/app_empty_widget.dart';
@@ -50,6 +51,8 @@ class HomePage extends GetView<HomeController> {
                     ),
                     children: [
                       _buildHero(),
+                      AppStyle.vGap24,
+                      _buildHotRooms(),
                       AppStyle.vGap24,
                       _buildRecent(),
                       AppStyle.vGap24,
@@ -264,6 +267,60 @@ class HomePage extends GetView<HomeController> {
     });
   }
 
+  /// 热门直播预览
+  ///
+  /// 主页原来只有"继续观看"那一张卡。没有关注也没有历史的时候,
+  /// 整屏只剩一个房间, 看着像没内容。这里放一批热门直播,
+  /// 一打开主页就有得看。
+  Widget _buildHotRooms() {
+    return Obx(() {
+      var list = controller.hotRooms;
+      if (list.isEmpty) {
+        return const SizedBox.shrink();
+      }
+      var site = controller.hotSite.value;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle(
+            Icons.local_fire_department_rounded,
+            "热门直播",
+            trailing: site.name,
+          ),
+          AppStyle.vGap16,
+          MasonryGridView.count(
+            // 左右各留一点: 焦点卡片会放大 6%, 不留的话边缘会被网格切掉
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            itemCount: list.length,
+            crossAxisCount: 5,
+            crossAxisSpacing: 24.w,
+            mainAxisSpacing: 24.w,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemBuilder: (_, i) {
+              var item = list[i];
+              return LiveRoomCard(
+                key: ValueKey("${site.id}_${item.roomId}"),
+                cover: item.cover,
+                anchor: item.userName,
+                title: item.title,
+                focusNode: item.focusNode,
+                roomId: item.roomId,
+                online: item.online,
+                onTap: () {
+                  AppNavigator.toLiveRoomDetail(
+                    site: site,
+                    roomId: item.roomId,
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      );
+    });
+  }
+
   /// 最近观看
   Widget _buildRecent() {
     return Obx(() {
@@ -431,13 +488,17 @@ class HomePage extends GetView<HomeController> {
     );
   }
 
-  Widget _buildSectionTitle(IconData icon, String title) {
+  Widget _buildSectionTitle(IconData icon, String title, {String? trailing}) {
     // 内容区的标题要比导航栏里的条目大一号, 两边才分得清谁是导航谁是正文
     return Row(
       children: [
         Icon(icon, color: Colors.white, size: 36.w),
         AppStyle.hGap12,
         Text(title, style: AppStyle.titleStyleWhite),
+        if (trailing != null) ...[
+          AppStyle.hGap16,
+          Text(trailing, style: AppStyle.subTextStyleWhite),
+        ],
       ],
     );
   }
