@@ -65,6 +65,33 @@ class DBService extends GetxService {
     return map;
   }
 
+  /// 每个直播间的累计观看时长（毫秒）
+  Map<String, int> getWatchDurationMap() {
+    var map = <String, int>{};
+    for (var item in historyBox.values) {
+      map[item.id] = item.watchDuration ?? 0;
+    }
+    return map;
+  }
+
+  /// 比较两个直播间的观看习惯
+  ///
+  /// 看得多的排前面, 次数一样时看得久的排前面。
+  /// 两边都一样时返回 0, 由调用方按原来的顺序兜底, 免得列表顺序乱跳。
+  static int compareWatchHabit(
+    String aId,
+    String bId,
+    Map<String, int> watchCountMap,
+    Map<String, int> watchDurationMap,
+  ) {
+    var countCompare =
+        (watchCountMap[bId] ?? 0).compareTo(watchCountMap[aId] ?? 0);
+    if (countCompare != 0) {
+      return countCompare;
+    }
+    return (watchDurationMap[bId] ?? 0).compareTo(watchDurationMap[aId] ?? 0);
+  }
+
   /// 增加观看次数
   Future<void> increaseWatchCount(String id) async {
     var history = getHistory(id);

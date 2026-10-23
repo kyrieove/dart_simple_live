@@ -77,12 +77,16 @@ class FollowUserService extends BasePageController<FollowUser> {
   /// 排序
   ///
   /// 1. 正在直播的排在最前面
-  /// 2. 其次按观看习惯排序：看得越多的主播排得越靠前
+  /// 2. 其次按观看习惯排序：看得越多、看得越久的主播排得越靠前
   /// 3. 最后按关注时间排序
   void sortList() {
     var sortByHabit = AppSettingsController.instance.sortByWatchHabit.value;
-    var watchCountMap =
-        sortByHabit ? DBService.instance.getWatchCountMap() : <String, int>{};
+    var watchCountMap = <String, int>{};
+    var watchDurationMap = <String, int>{};
+    if (sortByHabit) {
+      watchCountMap = DBService.instance.getWatchCountMap();
+      watchDurationMap = DBService.instance.getWatchDurationMap();
+    }
 
     list.sort((a, b) {
       // 状态 0 是"还没查出来", 按未开播处理, 别让它排到未开播前面
@@ -93,10 +97,14 @@ class FollowUserService extends BasePageController<FollowUser> {
         return liveCompare;
       }
       if (sortByHabit) {
-        var countCompare =
-            (watchCountMap[b.id] ?? 0).compareTo(watchCountMap[a.id] ?? 0);
-        if (countCompare != 0) {
-          return countCompare;
+        var habitCompare = DBService.compareWatchHabit(
+          a.id,
+          b.id,
+          watchCountMap,
+          watchDurationMap,
+        );
+        if (habitCompare != 0) {
+          return habitCompare;
         }
       }
       return b.addTime.compareTo(a.addTime);

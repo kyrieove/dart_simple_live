@@ -238,12 +238,14 @@ class SyncService extends GetxService {
       }
       for (var item in jsonBody) {
         var history = History.fromJson(item);
-        if (DBService.instance.historyBox.containsKey(history.id)) {
-          var old = DBService.instance.historyBox.get(history.id);
+        var local = DBService.instance.getHistory(history.id);
+        if (local != null) {
           //如果本地的更新时间比较新，就不更新
-          if (old!.updateTime.isAfter(history.updateTime)) {
+          if (local.updateTime.isAfter(history.updateTime)) {
             continue;
           }
+          // 手机端不带观看次数和时长, 合并一下, 别把本地的统计冲掉
+          history = history.mergeWith(local);
         }
         await DBService.instance.addOrUpdateHistory(history);
       }

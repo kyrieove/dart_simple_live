@@ -8,6 +8,7 @@ import 'package:simple_live_tv_app/app/app_theme.dart';
 import 'package:simple_live_tv_app/widgets/highlight_widget.dart';
 import 'package:simple_live_tv_app/app/controller/app_settings_controller.dart';
 import 'package:simple_live_tv_app/app/utils.dart';
+import 'package:simple_live_tv_app/modules/hot_live/hot_live_controller.dart';
 import 'package:simple_live_tv_app/modules/settings/settings_controller.dart';
 import 'package:simple_live_tv_app/services/bilibili_account_service.dart';
 import 'package:simple_live_tv_app/services/douyin_account_service.dart';
@@ -225,7 +226,8 @@ class SettingsPage extends GetView<SettingsController> {
               return Padding(
                 padding: EdgeInsets.only(right: 16.w),
                 child: HighlightWidget(
-                  focusNode: AppFocusNode(),
+                  focusNode: AppSettingsController.instance
+                      .styleColorFocusNode(c.toARGB32()),
                   foucsedColor: c,
                   borderRadius: AppStyle.radius12,
                   color: c.withAlpha(90),
@@ -270,6 +272,10 @@ class SettingsPage extends GetView<SettingsController> {
             onChanged: (e) {
               AppSettingsController.instance.setSortByWatchHabit(e == 1);
               FollowUserService.instance.sortList();
+              // 热门直播已经加载出来的房间要马上重排, 不然要等翻页才会变
+              if (Get.isRegistered<HotliveController>()) {
+                Get.find<HotliveController>().applySortOrder();
+              }
             },
           ),
         ),
