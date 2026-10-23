@@ -39,7 +39,15 @@ class HomePage extends GetView<HomeController> {
                 AppStyle.hGap32,
                 Expanded(
                   child: ListView(
-                    padding: AppStyle.edgeInsetsV24,
+                    // 左边留出和导航栏的距离, 右边留出页边距。
+                    // 内容区贴着导航栏的时候, "我的关注"这个标题
+                    // 看着就像导航栏里的第六个入口。
+                    padding: EdgeInsets.only(
+                      left: 48.w,
+                      right: 48.w,
+                      top: 24.w,
+                      bottom: 24.w,
+                    ),
                     children: [
                       _buildHero(),
                       AppStyle.vGap24,
@@ -83,7 +91,7 @@ class HomePage extends GetView<HomeController> {
           ),
           AppStyle.hGap24,
           HighlightButton(
-            focusNode: AppFocusNode(),
+            focusNode: controller.settingsFocusNode,
             iconData: Icons.settings,
             text: "设置",
             onTap: () {
@@ -157,7 +165,7 @@ class HomePage extends GetView<HomeController> {
       if (site == null) {
         return const SizedBox.shrink();
       }
-      var focusNode = controller.focusNodeFor(item.id);
+      var focusNode = controller.heroFocusNode;
       return HighlightWidget(
         focusNode: focusNode,
         borderRadius: AppStyle.radius16,
@@ -274,9 +282,12 @@ class HomePage extends GetView<HomeController> {
               scrollDirection: Axis.horizontal,
               itemCount: list.length - 1,
               itemBuilder: (_, i) {
+                var item = list[i + 1];
                 return Padding(
+                  // 列表刷新后顺序会变, 带上 key 才能让同一张卡片的焦点跟着它走
+                  key: ValueKey(item.id),
                   padding: EdgeInsets.only(right: 16.w),
-                  child: _buildRecentCard(list[i + 1]),
+                  child: _buildRecentCard(item),
                 );
               },
             ),
@@ -340,39 +351,61 @@ class HomePage extends GetView<HomeController> {
           _buildSectionTitle(Icons.favorite_border, "我的关注"),
           AppStyle.vGap16,
           if (FollowUserService.instance.list.isEmpty)
+            // 空状态做成一个有边界的小面板, 居中摆在内容区里。
+            // 散落在左上角会像页面没做完, 右边一大片空地更没有交代。
             Padding(
-              padding: AppStyle.edgeInsetsV24,
-              child: Column(
-                children: [
-                  LottieBuilder.asset(
-                    'assets/lotties/empty.json',
-                    width: 160.w,
-                    height: 160.w,
-                    repeat: false,
+              padding: EdgeInsets.symmetric(vertical: 24.w),
+              child: Center(
+                child: Container(
+                  width: 720.w,
+                  padding: EdgeInsets.symmetric(
+                    vertical: 40.w,
+                    horizontal: 48.w,
                   ),
-                  AppStyle.vGap24,
-                  Text(
-                    "暂无任何关注\n您可以从其他端同步数据到此处",
-                    textAlign: TextAlign.center,
-                    style: AppStyle.subTextStyleWhite,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(12),
+                    borderRadius: AppStyle.radius16,
+                    border: Border.all(color: Colors.white12),
                   ),
-                  AppStyle.vGap16,
-                  HighlightButton(
-                    focusNode: AppFocusNode(),
-                    iconData: Icons.devices,
-                    text: "同步数据",
-                    onTap: () {
-                      controller.toSync();
-                    },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      LottieBuilder.asset(
+                        'assets/lotties/empty.json',
+                        width: 120.w,
+                        height: 120.w,
+                        repeat: false,
+                      ),
+                      AppStyle.vGap16,
+                      Text(
+                        "暂无任何关注",
+                        style: AppStyle.textStyleWhite,
+                      ),
+                      AppStyle.vGap8,
+                      Text(
+                        "您可以从其他端同步数据到此处",
+                        textAlign: TextAlign.center,
+                        style: AppStyle.subTextStyleWhite,
+                      ),
+                      AppStyle.vGap24,
+                      HighlightButton(
+                        focusNode: controller.syncFocusNode,
+                        iconData: Icons.devices,
+                        text: "同步数据",
+                        onTap: () {
+                          controller.toSync();
+                        },
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             )
           else
             MasonryGridView.count(
               padding: EdgeInsets.zero,
               itemCount: FollowUserService.instance.list.length,
-              crossAxisCount: 2,
+              crossAxisCount: 3,
               crossAxisSpacing: 16.w,
               mainAxisSpacing: 16.w,
               shrinkWrap: true,
@@ -381,6 +414,8 @@ class HomePage extends GetView<HomeController> {
                 var item = FollowUserService.instance.list[i];
                 return Obx(
                   () => AnchorCard(
+                    // 关注列表会按观看习惯重排, 带上 key 焦点才不会跟着位置乱跑
+                    key: ValueKey(item.id),
                     face: item.face,
                     name: item.userName,
                     siteId: item.siteId,
@@ -397,11 +432,12 @@ class HomePage extends GetView<HomeController> {
   }
 
   Widget _buildSectionTitle(IconData icon, String title) {
+    // 内容区的标题要比导航栏里的条目大一号, 两边才分得清谁是导航谁是正文
     return Row(
       children: [
-        Icon(icon, color: Colors.white70, size: 30.w),
+        Icon(icon, color: Colors.white, size: 36.w),
         AppStyle.hGap12,
-        Text(title, style: AppStyle.titleStyleWhite.copyWith(fontSize: 30.w)),
+        Text(title, style: AppStyle.titleStyleWhite),
       ],
     );
   }
@@ -436,7 +472,7 @@ class HomePage extends GetView<HomeController> {
             children: [
               AppStyle.hGap48,
               HighlightButton(
-                focusNode: AppFocusNode(),
+                focusNode: controller.manageBackFocusNode,
                 iconData: Icons.arrow_back,
                 text: "返回",
                 onTap: () {
@@ -511,10 +547,10 @@ class HomePage extends GetView<HomeController> {
   }
 
   void showSearchDialog() {
-    var textController = TextEditingController();
     var mode = 0.obs;
-    var roomFocusNode = AppFocusNode()..isFoucsed.value = true;
-    var anchorFocusNode = AppFocusNode();
+    var roomFocusNode = controller.searchRoomFocusNode..isFoucsed.value = true;
+    var anchorFocusNode = controller.searchAnchorFocusNode..isFoucsed.value = false;
+    controller.searchTextController.clear();
     showDialog(
       context: Get.context!,
       builder: (_) => AlertDialog(
@@ -561,7 +597,7 @@ class HomePage extends GetView<HomeController> {
             SizedBox(
               width: 700.w,
               child: TextField(
-                controller: textController,
+                controller: controller.searchTextController,
                 style: AppStyle.textStyleWhite,
                 textInputAction: TextInputAction.search,
                 onSubmitted: (e) {
@@ -570,9 +606,9 @@ class HomePage extends GetView<HomeController> {
                     return;
                   }
                   if (mode.value == 0) {
-                    controller.toSearchRoom(textController.text);
+                    controller.toSearchRoom(controller.searchTextController.text);
                   } else {
-                    controller.toSearchAnchor(textController.text);
+                    controller.toSearchAnchor(controller.searchTextController.text);
                   }
                 },
                 decoration: InputDecoration(

@@ -1,6 +1,7 @@
 import 'package:simple_live_tv_app/services/local_storage_service.dart';
 
 import 'package:get/get.dart';
+import 'package:simple_live_tv_app/app/app_focus_node.dart';
 
 class AppSettingsController extends GetxController {
   static AppSettingsController get instance =>
@@ -288,6 +289,24 @@ class AppSettingsController extends GetxController {
   void setStyleColor(int e) {
     styleColor.value = e;
     LocalStorageService.instance.setValue(LocalStorageService.kStyleColor, e);
+  }
+
+  /// 主题色色块的焦点节点, 按颜色值复用
+  ///
+  /// 放在 build 里 new 的话, 换完主题色这一行就重建, 焦点当场丢掉,
+  /// 用户挑完颜色看着像没反应。
+  final Map<int, AppFocusNode> styleColorFocusNodes = {};
+
+  AppFocusNode styleColorFocusNode(int color) =>
+      styleColorFocusNodes.putIfAbsent(color, () => AppFocusNode());
+
+  @override
+  void onClose() {
+    for (var node in styleColorFocusNodes.values) {
+      node.dispose();
+    }
+    styleColorFocusNodes.clear();
+    super.onClose();
   }
 
   var isDynamic = false.obs;

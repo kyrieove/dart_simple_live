@@ -49,21 +49,47 @@ class SignalRService {
       _onRoomUserUpdatedStreamController.stream;
 
   HubConnection? hubConnection;
+
   Future<void> connect() async {
-    hubConnection = HubConnectionBuilder().withUrl(kUrl).build();
-    hubConnection!.onclose(({Exception? error}) {
+    // 上一次连接要先停掉再换, 否则旧连接还在跑, 也没人再引用它
+    await _stopHubConnection();
+
+    var connection = HubConnectionBuilder().withUrl(kUrl).build();
+    hubConnection = connection;
+    connection.onclose(({Exception? error}) {
       state = SignalRConnectionState.disconnected;
       _stateStreamController.add(state);
     });
-    hubConnection!.onreconnected(({String? connectionId}) {
+    connection.onreconnected(({String? connectionId}) {
       Log.d("reconnected: $connectionId");
       state = SignalRConnectionState.connected;
       _stateStreamController.add(state);
     });
-    await hubConnection!.start();
+    try {
+      await connection.start();
+    } catch (e) {
+      // 握手失败, 或者握手还没结束连接就被销毁了
+      Log.logPrint(e);
+      return;
+    }
+
+    // 握手期间连接已经被换掉或者销毁了, 不能再改状态
+    if (!identical(hubConnection, connection)) {
+      return;
+    }
     state = SignalRConnectionState.connected;
     _stateStreamController.add(state);
     _listen();
+  }
+
+  /// 停掉当前连接
+  ///
+  /// stop() 会等握手结束, 所以返回之后连接一定已经停了,
+  /// 不会留下一个还在跑、也没人引用的连接。
+  Future<void> _stopHubConnection() async {
+    var connection = hubConnection;
+    hubConnection = null;
+    await connection?.stop();
   }
 
   void _listen() {
@@ -132,7 +158,10 @@ class SignalRService {
     return Resp.fromObject(resp);
   }
 
-  void dispose() {
+  Future<void> dispose() async {
+    // 先停连接再关流: stop 会触发 onclose 回调, 那时候流还没关
+    await _stopHubConnection();
+
     _stateStreamController.close();
     _onFavoriteStreamController.close();
     _onHistoryStreamController.close();
@@ -140,8 +169,6 @@ class SignalRService {
     _onBiliAccountStreamController.close();
     _onRoomDestroyedStreamController.close();
     _onRoomUserUpdatedStreamController.close();
-
-    hubConnection?.stop();
   }
 }
 

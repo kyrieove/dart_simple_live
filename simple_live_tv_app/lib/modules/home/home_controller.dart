@@ -35,6 +35,32 @@ class HomeController extends BaseController {
   final List<AppFocusNode> navFocusNodes =
       List.generate(5, (_) => AppFocusNode());
 
+  /// 顶栏"设置"按钮的焦点节点
+  ///
+  /// 放在 build 里新建的话, 每次重建都会换一个新的节点,
+  /// 焦点刚落到按钮上就丢了。
+  final settingsFocusNode = AppFocusNode();
+
+  /// 英雄卡的焦点节点
+  ///
+  /// 英雄卡显示的是最近看的那个房间, 列表一刷新换的人就变了。
+  /// 节点跟着房间走的话, 用户从直播间退回来焦点就丢了。
+  final heroFocusNode = AppFocusNode();
+
+  /// 空状态里"同步数据"按钮的焦点节点
+  final syncFocusNode = AppFocusNode();
+
+  /// 关注管理弹窗里"返回"按钮的焦点节点
+  final manageBackFocusNode = AppFocusNode();
+
+  /// 搜索弹窗的输入框
+  ///
+  /// 放在控制器里而不是弹窗里: 每次开弹窗都 new 一个 TextEditingController
+  /// 和两个焦点节点, 用完没人释放。
+  final searchTextController = TextEditingController();
+  final searchRoomFocusNode = AppFocusNode();
+  final searchAnchorFocusNode = AppFocusNode();
+
   Timer? _clockTimer;
 
   @override
@@ -112,6 +138,20 @@ class HomeController extends BaseController {
   void onClose() {
     _clockTimer?.cancel();
     _historySubscription?.cancel();
+    for (var node in _cardFocusNodes.values) {
+      node.dispose();
+    }
+    _cardFocusNodes.clear();
+    for (var node in navFocusNodes) {
+      node.dispose();
+    }
+    settingsFocusNode.dispose();
+    heroFocusNode.dispose();
+    syncFocusNode.dispose();
+    manageBackFocusNode.dispose();
+    searchTextController.dispose();
+    searchRoomFocusNode.dispose();
+    searchAnchorFocusNode.dispose();
     super.onClose();
   }
 }

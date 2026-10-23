@@ -8,7 +8,7 @@ import 'package:simple_live_tv_app/routes/app_navigation.dart';
 import 'package:simple_live_tv_app/widgets/highlight_widget.dart';
 import 'package:simple_live_tv_app/widgets/net_image.dart';
 
-class AnchorCard extends StatelessWidget {
+class AnchorCard extends StatefulWidget {
   final String siteId;
   final String face;
   final String name;
@@ -30,17 +30,36 @@ class AnchorCard extends StatelessWidget {
   });
 
   @override
+  State<AnchorCard> createState() => _AnchorCardState();
+}
+
+class _AnchorCardState extends State<AnchorCard> {
+  /// 调用方没给焦点节点时的兜底节点
+  ///
+  /// 在 build 里 new 的话, 每次重建都会换一个节点, 遥控器焦点会丢, OK 键按下去没反应。
+  AppFocusNode? _fallbackFocusNode;
+
+  AppFocusNode get _focusNode =>
+      widget.focusNode ?? (_fallbackFocusNode ??= AppFocusNode());
+
+  @override
+  void dispose() {
+    _fallbackFocusNode?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    var site = Sites.allSites[siteId]!;
-    var focusNode = this.focusNode ?? AppFocusNode();
+    var site = Sites.allSites[widget.siteId]!;
+    var focusNode = _focusNode;
     return Obx(
       () => HighlightWidget(
-        onTap: onTap ??
+        onTap: widget.onTap ??
             () {
-              AppNavigator.toLiveRoomDetail(site: site, roomId: roomId);
+              AppNavigator.toLiveRoomDetail(site: site, roomId: widget.roomId);
             },
         focusNode: focusNode,
-        autofocus: autofocus,
+        autofocus: widget.autofocus,
         borderRadius: AppStyle.radius16,
         color: Colors.white10,
         child: Stack(
@@ -51,7 +70,7 @@ class AnchorCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.max,
                 children: [
                   NetImage(
-                    face,
+                    widget.face,
                     width: 100.w,
                     height: 100.w,
                     borderRadius: 100.w,
@@ -63,7 +82,7 @@ class AnchorCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          name,
+                          widget.name,
                           style: TextStyle(
                             fontSize: 36.w,
                             overflow: TextOverflow.ellipsis,
@@ -99,7 +118,7 @@ class AnchorCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (liveStatus == 2)
+            if (widget.liveStatus == 2)
               Positioned(
                 right: 0,
                 top: 0,

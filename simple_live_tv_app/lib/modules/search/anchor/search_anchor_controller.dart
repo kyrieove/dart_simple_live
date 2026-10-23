@@ -12,6 +12,17 @@ class SearchAnchorController extends BasePageController<LiveAnchorItemExt> {
   var siteId = Constant.kBiliBili.obs;
   var site = Sites.allSites[Constant.kBiliBili]!;
 
+  /// 平台切换按钮的焦点节点, 按平台 id 复用
+  ///
+  /// 放在 build 里 new 的话, 一切换平台按钮就重建, 遥控器的焦点当场丢掉。
+  final Map<String, AppFocusNode> siteFocusNodes = {};
+
+  AppFocusNode siteFocusNode(String id) =>
+      siteFocusNodes.putIfAbsent(id, () => AppFocusNode());
+
+  /// 顶栏"返回"按钮的焦点节点
+  final backFocusNode = AppFocusNode();
+
   @override
   void onInit() {
     scrollController.addListener(scrollListener);
@@ -49,6 +60,11 @@ class SearchAnchorController extends BasePageController<LiveAnchorItemExt> {
   @override
   void onClose() {
     scrollController.removeListener(scrollListener);
+    for (var node in siteFocusNodes.values) {
+      node.dispose();
+    }
+    siteFocusNodes.clear();
+    backFocusNode.dispose();
     super.onClose();
   }
 }

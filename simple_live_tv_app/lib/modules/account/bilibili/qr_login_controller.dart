@@ -56,6 +56,8 @@ class BiliBiliQRLoginController extends GetxController {
   }
 
   void startPoll() {
+    // 上一个定时器要先停掉, 否则会有两个轮询同时在跑
+    timer?.cancel();
     timer = Timer.periodic(
       const Duration(seconds: 3),
       (timer) {
@@ -88,6 +90,8 @@ class BiliBiliQRLoginController extends GetxController {
           Log.i(cookieStr);
           BiliBiliAccountService.instance.setCookie(cookieStr);
           await BiliBiliAccountService.instance.loadUserInfo();
+          // 二维码已经被用掉了, 不用再轮询
+          timer?.cancel();
           Get.back();
         }
       } else if (code == 86038) {

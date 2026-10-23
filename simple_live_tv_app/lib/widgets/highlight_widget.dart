@@ -68,7 +68,12 @@ class HighlightWidget extends StatelessWidget {
             if (e.logicalKey == LogicalKeyboardKey.enter ||
                 e.logicalKey == LogicalKeyboardKey.select ||
                 e.logicalKey == LogicalKeyboardKey.space) {
-              return onTap?.call() ?? KeyEventResult.ignored;
+              // 这里必须自己调用再返回结果, 不能写 onTap?.call() ?? ...
+              // onTap 声明成 Function(), 返回值是 dynamic, 而 onTap 是
+              // async void 时拿到的是 Future, 隐式转成 KeyEventResult 会直接抛类型错误,
+              // 按 OK 键的这次操作就废了。
+              onTap?.call();
+              return KeyEventResult.handled;
             }
           }
 

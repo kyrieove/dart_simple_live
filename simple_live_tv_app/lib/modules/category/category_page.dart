@@ -4,7 +4,6 @@ import 'package:simple_live_tv_app/routes/app_navigation.dart';
 import 'package:simple_live_tv_app/widgets/highlight_widget.dart';
 import 'package:simple_live_tv_app/widgets/net_image.dart';
 import 'package:get/get.dart';
-import 'package:simple_live_tv_app/app/app_focus_node.dart';
 import 'package:simple_live_tv_app/app/app_style.dart';
 import 'package:simple_live_tv_app/app/sites.dart';
 import 'package:simple_live_tv_app/modules/category/category_controller.dart';
@@ -25,7 +24,7 @@ class CategoryPage extends GetView<CategoryController> {
             children: [
               AppStyle.hGap48,
               HighlightButton(
-                focusNode: AppFocusNode(),
+                focusNode: controller.backFocusNode,
                 iconData: Icons.arrow_back,
                 text: "返回",
                 autofocus: true,
@@ -83,7 +82,7 @@ class CategoryPage extends GetView<CategoryController> {
                       ),
                       text: e.name,
                       selected: controller.siteId.value == e.id,
-                      focusNode: AppFocusNode(),
+                      focusNode: controller.siteFocusNode(e.id),
                       onTap: () {
                         controller.setSite(e.id);
                       },
@@ -114,7 +113,8 @@ class CategoryPage extends GetView<CategoryController> {
                       Obx(
                         () => GridView.count(
                           shrinkWrap: true,
-                          padding: AppStyle.edgeInsetsV8,
+                          // 右边多留一点, 焦点卡片放大之后不会被网格边缘切掉
+                          padding: EdgeInsets.fromLTRB(0, 8.w, 12.w, 8.w),
                           physics: const NeverScrollableScrollPhysics(),
                           crossAxisCount: 8,
                           crossAxisSpacing: 36.w,
@@ -169,13 +169,17 @@ class CategoryPage extends GetView<CategoryController> {
                   height: 64.w,
                 ),
           AppStyle.vGap12,
-          Text(
-            item.name,
-            maxLines: 1,
-            textAlign: TextAlign.center,
-            style: item.focusNode.isFoucsed.value
-                ? AppStyle.textStyleBlack
-                : AppStyle.textStyleWhite,
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.w),
+            child: Text(
+              item.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: item.focusNode.isFoucsed.value
+                  ? AppStyle.textStyleBlack
+                  : AppStyle.textStyleWhite,
+            ),
           ),
         ],
       ),
@@ -183,6 +187,8 @@ class CategoryPage extends GetView<CategoryController> {
   }
 
   Widget buildShowMore(AppLiveCategory item) {
+    // 和旁边的卡片保持一样的结构: 图标 + 文字。
+    // 光秃秃一个"显示全部"摆在网格里, 看着像一张加载失败的空卡。
     return HighlightWidget(
       focusNode: item.moreFocusNode,
       onTap: () {
@@ -190,15 +196,29 @@ class CategoryPage extends GetView<CategoryController> {
       },
       color: Colors.white10,
       borderRadius: AppStyle.radius16,
-      child: Center(
-        child: Text(
-          "显示全部",
-          maxLines: 1,
-          textAlign: TextAlign.center,
-          style: item.moreFocusNode.isFoucsed.value
-              ? AppStyle.textStyleBlack
-              : AppStyle.textStyleWhite,
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.more_horiz,
+            size: 64.w,
+            color:
+                item.moreFocusNode.isFoucsed.value ? Colors.black : Colors.white70,
+          ),
+          AppStyle.vGap12,
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.w),
+            child: Text(
+              "显示全部",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: item.moreFocusNode.isFoucsed.value
+                  ? AppStyle.textStyleBlack
+                  : AppStyle.textStyleWhite,
+            ),
+          ),
+        ],
       ),
     );
   }

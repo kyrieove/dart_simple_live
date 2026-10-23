@@ -1,9 +1,18 @@
+import 'package:simple_live_tv_app/app/app_focus_node.dart';
 import 'package:simple_live_tv_app/app/controller/base_controller.dart';
 import 'package:simple_live_tv_app/app/utils.dart';
 import 'package:simple_live_tv_app/models/db/history.dart';
 import 'package:simple_live_tv_app/services/db_service.dart';
 
 class HistoryController extends BasePageController<History> {
+  /// 卡片的焦点节点, 按观看记录 id 复用
+  ///
+  /// 放在 build 里 new 的话, 列表每重建一次就换一个节点, 遥控器焦点会丢, OK 键按下去没反应。
+  final Map<String, AppFocusNode> _cardFocusNodes = {};
+
+  AppFocusNode focusNodeFor(String id) =>
+      _cardFocusNodes.putIfAbsent(id, () => AppFocusNode());
+
   @override
   void onInit() {
     refreshData();
@@ -34,5 +43,14 @@ class HistoryController extends BasePageController<History> {
     }
     await DBService.instance.historyBox.delete(item.id);
     refreshData();
+  }
+
+  @override
+  void onClose() {
+    for (var node in _cardFocusNodes.values) {
+      node.dispose();
+    }
+    _cardFocusNodes.clear();
+    super.onClose();
   }
 }

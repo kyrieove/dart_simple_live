@@ -78,7 +78,7 @@ class BiliBiliQRLoginPage extends GetView<BiliBiliQRLoginController> {
                           ],
                         );
                       }
-                      if (controller.qrStatus.value == QRStatus.failed) {
+                      if (controller.qrStatus.value == QRStatus.expired) {
                         return Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [

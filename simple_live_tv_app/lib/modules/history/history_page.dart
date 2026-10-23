@@ -71,6 +71,7 @@ class HistoryPage extends GetView<HistoryController> {
                     siteId: item.siteId,
                     liveStatus: 0,
                     roomId: item.roomId,
+                    focusNode: controller.focusNodeFor(item.id),
                   );
                 },
               ),
