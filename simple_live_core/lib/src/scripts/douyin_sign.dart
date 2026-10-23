@@ -10666,6 +10666,11 @@ function getMSSDKSignature(msStub, userAgent) {
     return newUrl;
   }
 
+  /// 生成签名时的最大尝试次数
+  ///
+  /// 签名是在 UI 线程上同步跑 JS 算出来的,结果一直不合法时无限重试会让整个 App 卡死
+  static const int kMaxSignatureAttempts = 3;
+
   static String getSignature(String roomId, String uniqueId) {
     JsRuntime flutterJs = JsRuntime(
       memoryLimit: 4 * 1024 * 1024,
@@ -10678,7 +10683,11 @@ function getMSSDKSignature(msStub, userAgent) {
       "getMSSDKSignature('$msStub','$defaultUserAgent')",
     );
     // 如果signature中包含-或=，重新生成
-    while (signature.contains('-') || signature.contains('=')) {
+    // 尝试次数有上限,拿不到正常签名就返回最后一次的结果,总比卡在这里强
+    for (var attempt = 1;
+        attempt < kMaxSignatureAttempts &&
+            (signature.contains('-') || signature.contains('='));
+        attempt++) {
       signature = flutterJs.eval(
         "getMSSDKSignature('$msStub','$defaultUserAgent')",
       );

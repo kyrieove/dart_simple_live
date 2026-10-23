@@ -98,13 +98,7 @@ class BiliBiliSite implements LiveSite {
     var url =
         "$baseUrl?platform=web&parent_area_id=${category.parentId}&area_id=${category.id}&sort_type=&page=$page&w_webid=${await getAccessId()}";
 
-    var queryParams = await getWbiSign(url);
-
-    var result = await HttpClient.instance.getJson(
-      baseUrl,
-      queryParameters: queryParams,
-      header: await getHeader(),
-    );
+    var result = await _getWbiJson(url, baseUrl);
 
     var hasMore = result["data"]["has_more"] == 1;
     var items = <LiveRoomItem>[];
@@ -210,13 +204,7 @@ class BiliBiliSite implements LiveSite {
         "https://api.live.bilibili.com/xlive/web-interface/v1/second/getListByArea";
     var url = "$baseUrl?platform=web&sort=online&page_size=30&page=$page";
 
-    var queryParams = await getWbiSign(url);
-
-    var result = await HttpClient.instance.getJson(
-      baseUrl,
-      queryParameters: queryParams,
-      header: await getHeader(),
-    );
+    var result = await _getWbiJson(url, baseUrl);
 
     var hasMore = (result["data"]["list"] as List).isNotEmpty;
     var items = <LiveRoomItem>[];
@@ -241,12 +229,7 @@ class BiliBiliSite implements LiveSite {
     const danmuInfoBaseUrl =
         "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo";
     var danmuInfoUrl = "$danmuInfoBaseUrl?id=$realRoomId";
-    var queryParams = await getWbiSign(danmuInfoUrl);
-    var roomDanmakuResult = await HttpClient.instance.getJson(
-      danmuInfoBaseUrl,
-      queryParameters: queryParams,
-      header: await getHeader(),
-    );
+    var roomDanmakuResult = await _getWbiJson(danmuInfoUrl, danmuInfoBaseUrl);
     List<String> serverHosts = (roomDanmakuResult["data"]["host_list"] as List)
         .map<String>((e) => e["host"].toString())
         .toList();
@@ -304,14 +287,10 @@ class BiliBiliSite implements LiveSite {
   }
 
   Future<Map<String, dynamic>> getRoomInfo({required String roomId}) async {
-    var url =
-        "https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=$roomId";
-    var queryParams = await getWbiSign(url);
-    var result = await HttpClient.instance.getJson(
-      "https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom",
-      queryParameters: queryParams,
-      header: await getHeader(),
-    );
+    const apiPath =
+        "https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom";
+    var url = "$apiPath?room_id=$roomId";
+    var result = await _getWbiJson(url, apiPath);
     print("【B站接口返回】roomId=$roomId, result=$result");
     return result["data"];
   }
@@ -550,6 +529,49 @@ class BiliBiliSite implements LiveSite {
     kSubKey = subKey;
 
     return (imgKey, subKey);
+  }
+
+  /// 重新读取 WBI 签名密钥
+  ///
+  /// 密钥每天轮换,接口返回 -403 就说明缓存里的密钥已经过期
+  Future<(String, String)> _refreshWbiKeys() async {
+    kImgKey = '';
+    kSubKey = '';
+    return await getWbiKeys();
+  }
+
+  /// 发起带 WBI 签名的请求
+  ///
+  /// - [url] 完整的请求地址,带查询参数,用来算签名
+  /// - [apiPath] 接口地址,不带查询参数
+  ///
+  /// 密钥过期时接口返回 code -403,这时重新读一次密钥再重试一次
+  Future<dynamic> _getWbiJson(String url, String apiPath) async {
+    var result = await _wbiRequest(url, apiPath);
+    if (_isWbiKeyExpired(result)) {
+      await _refreshWbiKeys();
+      result = await _wbiRequest(url, apiPath);
+    }
+    if (_isWbiKeyExpired(result)) {
+      throw Exception(
+        "哔哩哔哩接口拒绝访问: ${asT<String?>(result["message"]) ?? "未知原因"}",
+      );
+    }
+    return result;
+  }
+
+  Future<dynamic> _wbiRequest(String url, String apiPath) async {
+    var queryParams = await getWbiSign(url);
+    return await HttpClient.instance.getJson(
+      apiPath,
+      queryParameters: queryParams,
+      header: await getHeader(),
+    );
+  }
+
+  /// 接口是不是因为 WBI 密钥过期被拒绝
+  bool _isWbiKeyExpired(dynamic result) {
+    return result is Map && asT<int?>(result["code"]) == -403;
   }
 
   String getMixinKey(String origin) {

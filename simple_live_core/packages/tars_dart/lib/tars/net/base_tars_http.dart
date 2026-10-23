@@ -17,6 +17,10 @@ class BaseTarsHttp {
   final String servantName;
   final Map<String, String> headers;
 
+  /// 请求超时时间,单位:毫秒
+  ///
+  /// 连接、接收、发送三个阶段都用这个值。
+  /// 服务端接了连接却一直不回应时,没有接收超时请求就会一直挂着
   var timeOut = 60000;
   var debugLog = false;
   late final Dio dio;
@@ -31,7 +35,9 @@ class BaseTarsHttp {
     this.headers = const {},
   }) {
     dio = Dio(BaseOptions(
-        connectTimeout: Duration(seconds: timeOut),
+        connectTimeout: Duration(milliseconds: timeOut),
+        receiveTimeout: Duration(milliseconds: timeOut),
+        sendTimeout: Duration(milliseconds: timeOut),
         baseUrl: baseUrl,
         responseType: ResponseType.bytes,
         headers: {

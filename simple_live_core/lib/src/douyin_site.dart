@@ -32,36 +32,36 @@ class DouyinSite implements LiveSite {
   /// 用户设置的 cookie
   String cookie = "";
 
+  /// 直播间详情可以复用的最长时间
+  ///
+  /// 抖音的 flv 直链带签名,详情放久了直链也跟着失效
+  static const Duration _roomDetailMaxAge = Duration(seconds: 60);
+
+  /// 最近一次拉取的直播间详情
+  LiveRoomDetail? _roomDetail;
+
+  /// _roomDetail 的拉取时间
+  DateTime? _roomDetailTime;
+
   void _logDebug(String msg) {
     // 同时使用 print 和 CoreLog 确保日志输出
     print("[Douyin] $msg");
     CoreLog.d("[Douyin] $msg");
   }
 
-  Map<String, dynamic> headers = {
-    "Authority": kDefaultAuthority,
-    "Referer": kDefaultReferer,
-    "User-Agent": kDefaultUserAgent,
-  };
-
-  Future<Map<String, dynamic>> getRequestHeaders() async {
-    try {
-      // 如果用户已设置 cookie，直接使用用户的 cookie
-      if (cookie.isNotEmpty) {
-        headers["cookie"] = cookie;
-        return headers;
-      }
-
-      // 使用默认的 ttwid cookie（只需要 ttwid 即可获取所有画质）
-      headers["cookie"] = kDefaultCookie;
-      return headers;
-    } catch (e) {
-      CoreLog.error(e);
-      if (!(headers["cookie"]?.toString().isNotEmpty ?? false)) {
-        headers["cookie"] = kDefaultCookie;
-      }
-      return headers;
-    }
+  /// 生成请求头
+  ///
+  /// 每次都返回一份新的 Map:多个直播间同时加载时共用一份请求头,
+  /// 后一个请求的 Referer 会把前一个覆盖掉
+  /// - [referer] 需要带房间号的 Referer 时传入
+  Future<Map<String, String>> getRequestHeaders({String? referer}) async {
+    return {
+      "Authority": kDefaultAuthority,
+      "Referer": referer ?? kDefaultReferer,
+      "User-Agent": kDefaultUserAgent,
+      // 用户设置了自己的 cookie 就用用户的,否则用默认的 ttwid
+      "cookie": cookie.isNotEmpty ? cookie : kDefaultCookie,
+    };
   }
 
   @override
@@ -237,6 +237,7 @@ class DouyinSite implements LiveSite {
 
   @override
   Future<LiveRoomDetail> getRoomDetail({required String roomId}) async {
+    LiveRoomDetail detail;
     // 有两种roomId，一种是webRid，一种是roomId
     // roomId是一次性的，用户每次重新开播都会生成一个新的roomId
     // roomId一般长度为19位，例如：7376429659866598196
@@ -245,10 +246,15 @@ class DouyinSite implements LiveSite {
     // 这里简单进行判断，如果roomId长度小于15，则认为是webRid
     if (roomId.length <= 16) {
       var webRid = roomId;
-      return await getRoomDetailByWebRid(webRid);
+      detail = await getRoomDetailByWebRid(webRid);
+    } else {
+      detail = await getRoomDetailByRoomId(roomId);
     }
 
-    return await getRoomDetailByRoomId(roomId);
+    // 记下这次拉到的详情和拉取时间,播放地址过期时需要重新拉一次
+    _roomDetail = detail;
+    _roomDetailTime = DateTime.now();
+    return detail;
   }
 
   /// 通过roomId获取直播间信息
@@ -299,7 +305,7 @@ class DouyinSite implements LiveSite {
         webRid: webRid,
         roomId: roomId,
         userId: userUniqueId,
-        cookie: headers["cookie"],
+        cookie: headers["cookie"] ?? "",
       ),
       data: room["stream_url"],
     );
@@ -361,7 +367,7 @@ class DouyinSite implements LiveSite {
         webRid: webRid,
         roomId: roomId,
         userId: userUniqueId,
-        cookie: headers["cookie"],
+        cookie: headers["cookie"] ?? "",
       ),
       data: roomStatus ? roomData["stream_url"] : {},
     );
@@ -405,7 +411,7 @@ class DouyinSite implements LiveSite {
         webRid: webRid,
         roomId: roomId,
         userId: userUniqueId,
-        cookie: headers["cookie"],
+        cookie: headers["cookie"] ?? "",
       ),
       data: roomStatus ? room["stream_url"] : {},
     );
@@ -428,7 +434,7 @@ class DouyinSite implements LiveSite {
   Future<String> _getWebCookie(String webRid) async {
     var headResp = await HttpClient.instance.head(
       "https://live.douyin.com/$webRid",
-      header: headers,
+      header: await getRequestHeaders(),
     );
     var dyCookie = "";
     headResp.headers["set-cookie"]?.forEach((element) {
@@ -481,10 +487,10 @@ class DouyinSite implements LiveSite {
     String serverUrl = "https://live.douyin.com/webcast/room/web/enter/";
 
     // 提前获取 headers
-    var requestHeader = await getRequestHeaders();
-
-    // 使用动态 Referer（包含房间号，参考 DouyinLiveRecorder）
-    requestHeader["Referer"] = "https://live.douyin.com/$webRid";
+    // Referer 带上房间号,和浏览器打开直播间时保持一致
+    var requestHeader = await getRequestHeaders(
+      referer: "https://live.douyin.com/$webRid",
+    );
 
     var uri = Uri.parse(serverUrl).replace(
       scheme: "https",
@@ -634,7 +640,58 @@ class DouyinSite implements LiveSite {
     required LivePlayQuality quality,
   }) async {
     // 返回列表的副本，防止外部 clear() 影响原始数据
-    return LivePlayUrl(urls: List<String>.from(quality.data));
+    var urls = List<String>.from(quality.data);
+
+    if (_isRoomDetailStale(detail)) {
+      // 详情里的直链带签名,放久了就失效了,
+      // 这里重新拉一次详情,再从新详情里取对应画质的地址
+      var freshDetail = await getRoomDetail(roomId: detail.roomId);
+      var freshQualities = await getPlayQualites(detail: freshDetail);
+      var matched = _matchQuality(freshQualities, quality);
+      urls = matched == null ? [] : List<String>.from(matched.data);
+    }
+
+    return LivePlayUrl(
+      urls: urls,
+      // 直链大多走 CDN,会校验 Referer 和 User-Agent,
+      // 带上和网页一致的请求头,避免出现只有声音没有画面的情况
+      headers: await getRequestHeaders(
+        referer: "https://live.douyin.com/${detail.roomId}",
+      ),
+    );
+  }
+
+  /// 直播间详情是否已经过期
+  ///
+  /// 只有 [getRoomDetail] 返回的那份详情才算数:
+  /// 别的接口(比如查询开播状态)也会去拉详情,拉过之后就不知道手上这份有多旧了,
+  /// 这种状况下一律当作过期处理
+  bool _isRoomDetailStale(LiveRoomDetail detail) {
+    var fetchedAt = _roomDetailTime;
+    if (fetchedAt == null || !identical(_roomDetail, detail)) {
+      return true;
+    }
+    return DateTime.now().difference(fetchedAt) > _roomDetailMaxAge;
+  }
+
+  /// 在新的画质列表里找到和 [target] 对应的一项
+  ///
+  /// 优先按清晰度等级匹配:等级是抖音给的稳定标识,名称只是显示用的
+  LivePlayQuality? _matchQuality(
+    List<LivePlayQuality> qualities,
+    LivePlayQuality target,
+  ) {
+    for (var item in qualities) {
+      if (item.sort == target.sort) {
+        return item;
+      }
+    }
+    for (var item in qualities) {
+      if (item.quality == target.quality) {
+        return item;
+      }
+    }
+    return null;
   }
 
   @override
@@ -686,7 +743,7 @@ class DouyinSite implements LiveSite {
     var requestUrl = DouyinSign.getAbogusUrl(uri.toString(), kDefaultUserAgent);
     var headResp = await HttpClient.instance.head(
       'https://live.douyin.com',
-      header: headers,
+      header: await getRequestHeaders(),
     );
     var dyCookie = "";
     headResp.headers["set-cookie"]?.forEach((element) {

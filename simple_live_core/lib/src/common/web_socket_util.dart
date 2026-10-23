@@ -56,7 +56,17 @@ class WebScoketUtils {
 
   StreamSubscription<dynamic>? streamSubscription;
 
+  /// 是否已经彻底关闭
+  ///
+  /// close() 之后, connect() 里 await 的那条协程还可能醒过来。
+  /// 那时候再 ready() 会挂上一个没人管的心跳定时器, 或者再连一次备用地址,
+  /// 变成关不掉的僵尸连接: 换一次房间就多一条。
+  bool _closed = false;
+
   void connect({bool retry = false}) async {
+    if (_closed) {
+      return;
+    }
     // 只关连接本身, 不能碰重连计划, 否则重连只会试一次
     _closeSocket();
     try {
@@ -73,6 +83,9 @@ class WebScoketUtils {
       await webSocket?.ready;
       ready();
     } catch (e) {
+      if (_closed) {
+        return;
+      }
       if (!retry) {
         connect(retry: true);
         return;
@@ -86,6 +99,9 @@ class WebScoketUtils {
 
   /// 连接完成
   void ready() {
+    if (_closed) {
+      return;
+    }
     status = SocketStatus.connected;
 
     streamSubscription = webSocket?.stream.listen(
@@ -99,6 +115,7 @@ class WebScoketUtils {
   }
 
   void initHeartBeat() {
+    heartBeatTimer?.cancel();
     heartBeatTimer = Timer.periodic(Duration(milliseconds: heartBeatTime), (
       timer,
     ) {
@@ -147,6 +164,9 @@ class WebScoketUtils {
 
   /// 彻底关闭, 包括重连计划
   void close() {
+    // 关上之后 connect() 里挂着的 await 醒过来也不能再连,
+    // 否则会留一条谁也关不掉的连接和心跳定时器
+    _closed = true;
     _closeSocket();
 
     reconnectTimer?.cancel();
@@ -154,6 +174,9 @@ class WebScoketUtils {
   }
 
   void reconnect() {
+    if (_closed) {
+      return;
+    }
     status = SocketStatus.closed;
     if (reconnectTime < maxReconnectTime) {
       reconnectTime++;
